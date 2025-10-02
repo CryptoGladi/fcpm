@@ -13,11 +13,6 @@ where
     Metadata: Serialize + DeserializeOwned,
     Self: Sized,
 {
-    fn open(path: impl AsRef<Path>) -> Result<Self, Error>;
-
-    fn open_with_options(path: impl AsRef<Path>, options: open::OpenOptions)
-    -> Result<Self, Error>;
-
     fn update_repositories(&mut self) -> Result<(), Error>; // TODO add progress 
     fn add_repository(&mut self, repository: Repository) -> Result<(), Error>;
     fn remove_repository(&mut self, name_repository: &str) -> Result<(), Error>;
