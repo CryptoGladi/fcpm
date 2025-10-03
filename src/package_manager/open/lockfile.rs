@@ -7,6 +7,9 @@ use thiserror::Error;
 pub enum LockFileError {
     #[error("IO error: `{0}`")]
     IO(#[from] std::io::Error),
+
+    #[error("Lock error: `{0}`")]
+    Lock(#[from] std::fs::TryLockError),
 }
 
 #[derive(Debug)]
@@ -22,8 +25,12 @@ impl LockFile {
         #[cfg(feature = "logging")]
         log::debug!("Create lock file: `{}`", path_buf.display());
 
-        let file = fs::OpenOptions::new().append(true).open(&path_buf)?;
-        file.lock()?;
+        let file = fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(&path_buf)?;
+
+        file.try_lock()?;
 
         Ok(Self {
             file,
@@ -54,30 +61,36 @@ impl Drop for LockFile {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     #[test_log::test]
     fn lock() {
-        let lock = LockFile::new("ld").unwrap();
+        let tempdir = tempdir().unwrap();
+        let path = tempdir.path().join("lock");
+
+        let lock = LockFile::new(path).unwrap();
         drop(lock);
     }
 
     #[test_log::test]
     fn unlock() {
-        let path = "ds";
+        let tempdir = tempdir().unwrap();
+        let path = tempdir.path().join("lock");
 
-        let lock1 = LockFile::new(path).unwrap();
+        let lock1 = LockFile::new(&path).unwrap();
         lock1.unlock().unwrap();
 
-        let lock2 = LockFile::new(path).unwrap();
+        let lock2 = LockFile::new(&path).unwrap();
         drop(lock2);
     }
 
     #[test_log::test]
     #[should_panic]
     fn conflict_lock() {
-        let path = "d";
+        let tempdir = tempdir().unwrap();
+        let path = tempdir.path().join("lock");
 
-        let _lock1 = LockFile::new(path).unwrap();
-        let _lock2 = LockFile::new(path).unwrap(); // Panic
+        let _lock1 = LockFile::new(&path).unwrap();
+        let _lock2 = LockFile::new(&path).unwrap(); // Panic
     }
 }

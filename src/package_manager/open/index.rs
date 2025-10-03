@@ -39,24 +39,28 @@ impl Index {
         log::debug!("Init database for index in path: `{}`", self.path.display());
 
         #[cfg(feature = "logging")]
-        log::trace!("Create table `packages`");
+        log::debug!("Create table `packages`");
         self.db.execute(
-            "create table `packages` if NOT exists (
+            "create table if not exists `packages` (
                     `id` integer not null primary key autoincrement,
-                    `package-name` varchar(255) not null unique,
-                    `package-path` varchar(255) not null unique,
+                    `package_name` varchar(255) not null unique,
+                    `package_path` varchar(255) not null unique,
                     `version` varchar(255) not null,
-                    `repository-name` varchar(255) not null,
-                    `hashsum` varchar(256) not null
+                    `repository_name` varchar(255) not null,
+                    `hashsum` varchar(256) not null,
                     `metadata` text null
                 )",
             (),
         )?;
 
         #[cfg(feature = "logging")]
-        log::trace!("Create index for table `packages`");
+        log::debug!("Create index for table `packages`");
         self.db.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS package-name-idx ON packages(package-name)",
+            "create unique index if not exists package_name_idx on packages(package_name)",
+            (),
+        )?;
+        self.db.execute(
+            "create unique index if not exists package_path_idx on packages(package_path)",
             (),
         )?;
 
@@ -89,19 +93,24 @@ impl Index {
 mod tests {
     use super::*;
     use rusqlite::OpenFlags;
+    use tempfile::tempdir;
 
     #[test_log::test]
     fn open() {
-        let path = PathBuf::from("");
-        let index = Index::open(&path, OpenFlags::SQLITE_OPEN_CREATE).unwrap();
+        let tempdir = tempdir().unwrap();
+        let path = tempdir.path().join("index.sqlite");
+
+        let index = Index::open(&path, OpenFlags::default()).unwrap();
 
         assert_eq!(index.path, path);
     }
 
     #[test_log::test]
     fn init() {
-        let path = "";
-        let index = Index::open(path, OpenFlags::SQLITE_OPEN_CREATE).unwrap();
+        let tempdir = tempdir().unwrap();
+        let path = tempdir.path().join("index.sqlite");
+
+        let index = Index::open(path, OpenFlags::default()).unwrap();
 
         index.init().unwrap();
     }
