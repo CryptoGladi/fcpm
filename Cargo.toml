@@ -14,4 +14,4 @@ default = ["logging"]
 logging = ["dep:log"]
 
 [dev-dependencies]
-test-log = "0.2.18"
+test-log = "0.2"

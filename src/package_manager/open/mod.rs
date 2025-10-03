@@ -1,15 +1,15 @@
 pub(crate) mod index;
-pub(crate) mod manifest;
+pub(crate) mod lockfile;
 
 use crate::error::Error;
-use core::error;
 use index::Index;
+use lockfile::LockFile;
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 const INDEX_NAME: &str = "index.sqlite";
-const MANIFEST_NAME: &str = "manifest.toml";
+const LOCKFILE_NAME: &str = "n.lock";
 
 #[derive(Debug, Clone)]
 pub struct OpenOptions {
@@ -44,14 +44,14 @@ pub enum OpenError {
     #[error("Index not found: `{0}`")]
     IndexNotFound(PathBuf),
 
-    #[error("Manifest not found: `{0}`")]
-    ManifestNotFound(PathBuf),
-
     #[error("Filesystem: `{0}`")]
     IO(#[from] std::io::Error),
 
     #[error("Error in index sqlite: `{0}`")]
     Index(#[from] rusqlite::Error),
+
+    #[error("Lockfile error: `{0}`")]
+    LockFile(#[from] lockfile::LockFileError),
 }
 
 fn check_exists_files(path: impl AsRef<Path>) -> Result<(), OpenError> {
@@ -64,11 +64,6 @@ fn check_exists_files(path: impl AsRef<Path>) -> Result<(), OpenError> {
     let index_path = path_buf.join(INDEX_NAME);
     if !fs::metadata(&index_path)?.is_file() {
         return Err(OpenError::IndexNotFound(index_path));
-    }
-
-    let manifest_path = path_buf.join(MANIFEST_NAME);
-    if !fs::metadata(&manifest_path)?.is_file() {
-        return Err(OpenError::ManifestNotFound(manifest_path));
     }
 
     Ok(())
@@ -84,6 +79,8 @@ where
         #[cfg(feature = "logging")]
         log::debug!("Open from path: {}", path_buf.display());
 
+        let lock = LockFile::new(&path_buf)?;
+
         check_exists_files(&path_buf)?;
         let index = Index::open(&path_buf, options.into())?;
 
@@ -92,3 +89,6 @@ where
 
     fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error>;
 }
+
+#[cfg(test)]
+mod tests {}
