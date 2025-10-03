@@ -2,13 +2,14 @@ pub mod open;
 pub mod repository;
 
 use crate::error::Error;
+use open::PackageManagerOpen;
 use repository::Repository;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::borrow::Cow;
 use std::path::Path;
 
-pub trait PackageManager<'a, Metadata>
+pub trait PackageManager<'a, Metadata>: PackageManagerOpen
 where
     Metadata: Serialize + DeserializeOwned,
     Self: Sized,

@@ -8,17 +8,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-const INDEX_NAME: &str = "index.sqlite";
-const LOCKFILE_NAME: &str = "n.lock";
-
 #[derive(Debug, Clone)]
 pub struct OpenOptions {
+    index_name: String,
+    lockfile_name: String,
     create_if_not_exists: bool,
 }
 
 impl Default for OpenOptions {
     fn default() -> Self {
         Self {
+            index_name: "index.sqlite".to_string(),
+            lockfile_name: "fcpm.lock".to_string(),
             create_if_not_exists: true,
         }
     }
@@ -47,21 +48,21 @@ pub enum OpenError {
     #[error("Filesystem: `{0}`")]
     IO(#[from] std::io::Error),
 
-    #[error("Error in index sqlite: `{0}`")]
-    Index(#[from] rusqlite::Error),
+    #[error("Error in index: `{0}`")]
+    Index(#[from] index::IndexError),
 
     #[error("Lockfile error: `{0}`")]
     LockFile(#[from] lockfile::LockFileError),
 }
 
-fn check_exists_files(path: impl AsRef<Path>) -> Result<(), OpenError> {
+fn check_exists_files(path: impl AsRef<Path>, config: &OpenOptions) -> Result<(), OpenError> {
     let path_buf = path.as_ref().to_path_buf();
 
     if !fs::metadata(&path_buf)?.is_dir() {
         return Err(OpenError::StorageNotFound(path_buf));
     }
 
-    let index_path = path_buf.join(INDEX_NAME);
+    let index_path = path_buf.join(&config.index_name);
     if !fs::metadata(&index_path)?.is_file() {
         return Err(OpenError::IndexNotFound(index_path));
     }
@@ -79,10 +80,10 @@ where
         #[cfg(feature = "logging")]
         log::debug!("Open from path: {}", path_buf.display());
 
-        let lock = LockFile::new(&path_buf)?;
+        let lock = LockFile::new(path_buf.join(&options.lockfile_name))?;
 
-        check_exists_files(&path_buf)?;
-        let index = Index::open(&path_buf, options.into())?;
+        check_exists_files(&path_buf, &options)?;
+        let index = Index::open(path_buf.join(&options.index_name), options.into())?;
 
         todo!()
     }
