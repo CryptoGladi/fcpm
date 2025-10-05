@@ -1,5 +1,5 @@
-pub(crate) mod index;
-pub(crate) mod lockfile;
+pub mod index;
+pub mod lockfile;
 
 use crate::error::Error;
 use index::Index;
