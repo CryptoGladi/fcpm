@@ -83,7 +83,7 @@ where
         let lock = LockFile::new(path_buf.join(&options.lockfile_name))?;
 
         check_exists_files(&path_buf, &options)?;
-        let index = Index::open(path_buf.join(&options.index_name), options.into())?;
+        //let index: Index<, _> = Index::open(path_buf.join(&options.index_name), options.into())?;
 
         todo!()
     }
