@@ -1,4 +1,5 @@
 use crate::package::Package;
+use log::Metadata;
 use rusqlite::Connection;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
@@ -18,6 +19,23 @@ where
 
     #[allow(dead_code)]
     phantom: (PhantomData<Metadata>, PhantomData<P>),
+}
+
+impl<Metadata, P> PartialEq for Index<Metadata, P>
+where
+    Metadata: Serialize + DeserializeOwned + Clone,
+    P: Package<Metadata>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
+}
+
+impl<Metadata, P> Eq for Index<Metadata, P>
+where
+    Metadata: Serialize + DeserializeOwned + Clone,
+    P: Package<Metadata>,
+{
 }
 
 #[derive(Debug, Error)]
@@ -418,5 +436,15 @@ mod tests {
         index.add_package(&package).unwrap();
 
         assert_eq!(index.get_packages().unwrap(), [package]);
+    }
+
+    #[test_log::test]
+    fn partial_eq() {
+        let (_tempdir1, index1) = create_test_index();
+        let (_tempdir2, index2) = create_test_index();
+
+        assert_eq!(index1, index1);
+        assert_eq!(index2, index2);
+        assert_ne!(index1, index2);
     }
 }

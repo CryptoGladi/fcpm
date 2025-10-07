@@ -18,6 +18,14 @@ pub struct LockFile {
     path: PathBuf,
 }
 
+impl PartialEq for LockFile {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
+}
+
+impl Eq for LockFile {}
+
 impl LockFile {
     pub fn new(path: impl AsRef<Path>) -> Result<Self, LockFileError> {
         let path_buf = path.as_ref().to_path_buf();
@@ -92,5 +100,20 @@ mod tests {
 
         let _lock1 = LockFile::new(&path).unwrap();
         let _lock2 = LockFile::new(&path).unwrap(); // Panic
+    }
+
+    #[test_log::test]
+    fn partial_eq() {
+        let tempdir = tempdir().unwrap();
+
+        let path1 = tempdir.path().join("lock1");
+        let lock1 = LockFile::new(&path1).unwrap();
+
+        let path2 = tempdir.path().join("lock2");
+        let lock2 = LockFile::new(&path2).unwrap();
+
+        assert_eq!(lock1, lock1);
+        assert_eq!(lock2, lock2);
+        assert_ne!(lock1, lock2);
     }
 }
