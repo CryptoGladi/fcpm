@@ -1,3 +1,5 @@
+//! Core trait
+
 pub mod index;
 pub mod lockfile;
 
