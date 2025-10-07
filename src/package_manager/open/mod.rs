@@ -2,8 +2,11 @@ pub mod index;
 pub mod lockfile;
 
 use crate::error::Error;
+use crate::package::Package;
 use index::Index;
 use lockfile::LockFile;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -27,7 +30,11 @@ impl Default for OpenOptions {
 
 impl From<OpenOptions> for rusqlite::OpenFlags {
     fn from(value: OpenOptions) -> Self {
-        let mut open_flags = rusqlite::OpenFlags::empty();
+        use rusqlite::OpenFlags;
+
+        let mut open_flags = OpenFlags::SQLITE_OPEN_NO_MUTEX
+            | OpenFlags::SQLITE_OPEN_URI
+            | OpenFlags::SQLITE_OPEN_READ_WRITE;
 
         if value.create_if_not_exists {
             open_flags |= rusqlite::OpenFlags::SQLITE_OPEN_CREATE;
@@ -55,14 +62,17 @@ pub enum OpenError {
     LockFile(#[from] lockfile::LockFileError),
 }
 
-fn check_exists_files(path: impl AsRef<Path>, config: &OpenOptions) -> Result<(), OpenError> {
+pub fn check_exists_files(path: impl AsRef<Path>, options: &OpenOptions) -> Result<(), OpenError> {
+    #[cfg(feature = "logging")]
+    log::debug!("Run check exists files");
+
     let path_buf = path.as_ref().to_path_buf();
 
     if !fs::metadata(&path_buf)?.is_dir() {
         return Err(OpenError::StorageNotFound(path_buf));
     }
 
-    let index_path = path_buf.join(&config.index_name);
+    let index_path = path_buf.join(&options.index_name);
     if !fs::metadata(&index_path)?.is_file() {
         return Err(OpenError::IndexNotFound(index_path));
     }
@@ -70,26 +80,61 @@ fn check_exists_files(path: impl AsRef<Path>, config: &OpenOptions) -> Result<()
     Ok(())
 }
 
-pub trait PackageManagerOpen
+pub trait PackageManagerOpen<Metadata, P>
 where
     Self: Sized,
+    Metadata: Serialize + DeserializeOwned + Clone,
+    P: Package<Metadata>,
 {
-    fn open(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, OpenError> {
-        let path_buf = path.as_ref().to_path_buf();
-
-        #[cfg(feature = "logging")]
-        log::debug!("Open from path: {}", path_buf.display());
-
-        let lock = LockFile::new(path_buf.join(&options.lockfile_name))?;
-
-        check_exists_files(&path_buf, &options)?;
-        //let index: Index<, _> = Index::open(path_buf.join(&options.index_name), options.into())?;
-
-        todo!()
+    fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
+        Self::open_with_options(path, OpenOptions::default())
     }
 
     fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error>;
+
+    fn get_lockfile(&self) -> &LockFile;
+
+    fn get_index(&self) -> &Index<Metadata, P>;
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use crate::package::tests::PackageTest;
+    use tempfile::tempdir;
+
+    pub struct PackageManagerOpenTest {
+        lockfile: LockFile,
+        index: Index<(), PackageTest>,
+    }
+
+    impl PackageManagerOpen<(), PackageTest> for PackageManagerOpenTest {
+        fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error> {
+            let path_buf = path.as_ref().to_path_buf();
+
+            check_exists_files(&path_buf, &options)?;
+
+            let lockfile = LockFile::new(&path_buf.join(&options.lockfile_name))
+                .map_err(OpenError::LockFile)?;
+            let index = Index::open(&path_buf.join(&options.index_name), options.into())
+                .map_err(OpenError::Index)?;
+
+            Ok(Self { index, lockfile })
+        }
+
+        fn get_lockfile(&self) -> &LockFile {
+            &self.lockfile
+        }
+
+        fn get_index(&self) -> &Index<(), PackageTest> {
+            &self.index
+        }
+    }
+
+    #[test_log::test]
+    #[should_panic]
+    fn open_without_init() {
+        let tempdir = tempdir().unwrap();
+        let _package_manager_open = PackageManagerOpenTest::open(tempdir.path()).unwrap();
+    }
+}

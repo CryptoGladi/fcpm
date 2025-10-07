@@ -1,5 +1,4 @@
 use crate::package::Package;
-use log::Metadata;
 use rusqlite::Connection;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
@@ -16,6 +15,8 @@ where
 {
     path: PathBuf,
     db: rusqlite::Connection,
+
+    #[allow(dead_code)]
     phantom: (PhantomData<Metadata>, PhantomData<P>),
 }
 
@@ -124,53 +125,68 @@ where
     }
 
     pub fn get_package(&self, package_name: &str) -> Result<P, IndexError> {
-        let package = self.db.query_one(
+        #[cfg(feature = "logging")]
+        log::debug!("Get package by name: {package_name}");
+
+        let (version, repository_name, hashsum, metadata_str) = self.db.query_one(
             "select `version`, `repository_name`, `hashsum`, `metadata` from `packages` where name = ?1",
             ((package_name),),
             |row| {
                 let version = row.get(0)?;
                 let repository_name = row.get(1)?;
                 let hashsum = row.get(2)?;
-
-                // TODO delete unwrap
                 let metadata: String = row.get(3)?;
-                let metadata = serde_json::from_str(&metadata).unwrap();
 
-                Ok(P::new(
-                    package_name.to_string(),
-                    version,
-                    repository_name,
-                    hashsum,
-                    metadata,
-                ))
+                Ok((version, repository_name, hashsum, metadata))
             },
         )?;
+
+        let metadata = serde_json::from_str(&metadata_str)?;
+        let package = P::new(
+            package_name.to_string(),
+            version,
+            repository_name,
+            hashsum,
+            metadata,
+        );
 
         Ok(package)
     }
 
-    pub fn get_packages(&self) -> Result<(), IndexError> {
-        // TODO ????
-        let packages = self.db.query_row(
+    pub fn get_packages(&self) -> Result<Vec<P>, IndexError> {
+        #[cfg(feature = "logging")]
+        log::debug!("Get all packages");
+
+        let mut stmt = self.db.prepare(
             "select `name`, `version`, `repository_name`, `hashsum`, `metadata` from `packages`",
-            (),
-            |row| {
-                let name = row.get(0)?;
-                let version = row.get(1)?;
-                let repository_name = row.get(2)?;
-                let hashsum = row.get(3)?;
-
-                // TODO delete unwrap
-                let metadata: String = row.get(4)?;
-                let metadata = serde_json::from_str(&metadata).unwrap();
-
-                Ok(P::new(name, version, repository_name, hashsum, metadata))
-            },
         )?;
-        Ok(())
+
+        let rows = stmt.query_map((), |row| {
+            let name: String = row.get(0)?;
+            let version: String = row.get(1)?;
+            let repository_name: String = row.get(2)?;
+            let hashsum: String = row.get(3)?;
+            let metadata: String = row.get(4)?;
+
+            Ok((name, version, repository_name, hashsum, metadata))
+        })?;
+
+        let mut packages = Vec::new();
+        for row in rows {
+            let (name, version, repository_name, hashsum, metadata) = row?;
+            let metadata = serde_json::from_str(&metadata)?;
+
+            let package = P::new(name, version, repository_name, hashsum, metadata);
+            packages.push(package);
+        }
+
+        Ok(packages)
     }
 
     pub fn have_package(&self, package_name: &str) -> Result<bool, IndexError> {
+        #[cfg(feature = "logging")]
+        log::debug!("Have package: {package_name}?");
+
         match self.get_package(package_name) {
             Err(IndexError::SQLite(rusqlite::Error::QueryReturnedNoRows)) => Ok(false),
             Err(error) => Err(error),
@@ -378,5 +394,29 @@ mod tests {
 
         index.add_package(&package).unwrap();
         assert!(index.have_package(&package.name).unwrap());
+    }
+
+    #[test_log::test]
+    fn get_packages() {
+        let (_tempdir, index) = create_test_index();
+
+        assert_eq!(index.get_packages().unwrap(), []);
+
+        let package_test = PackageTest::default();
+        index.add_package(&package_test).unwrap();
+
+        assert_eq!(index.get_packages().unwrap(), [package_test]);
+    }
+
+    #[test_log::test]
+    fn get_packages_with_metadata() {
+        let (_tempdir, index) = create_test_index_with_metadata();
+
+        assert_eq!(index.get_packages().unwrap(), []);
+
+        let package = PackageTestWithMetadata::default();
+        index.add_package(&package).unwrap();
+
+        assert_eq!(index.get_packages().unwrap(), [package]);
     }
 }

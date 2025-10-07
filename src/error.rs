@@ -4,5 +4,5 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Error in opening: {0}")]
-    Open(OpenError),
+    Open(#[from] OpenError),
 }

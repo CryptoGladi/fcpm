@@ -13,13 +13,13 @@ pub enum LockFileError {
 }
 
 #[derive(Debug)]
-pub(crate) struct LockFile {
+pub struct LockFile {
     file: File,
     path: PathBuf,
 }
 
 impl LockFile {
-    pub(crate) fn new(path: impl AsRef<Path>) -> Result<Self, LockFileError> {
+    pub fn new(path: impl AsRef<Path>) -> Result<Self, LockFileError> {
         let path_buf = path.as_ref().to_path_buf();
 
         #[cfg(feature = "logging")]

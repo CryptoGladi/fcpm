@@ -107,7 +107,7 @@ pub(crate) mod tests {
     impl Default for PackageTestWithMetadata {
         fn default() -> Self {
             Self {
-                name: "test".to_string(),
+                name: "test-with-metadata".to_string(),
                 version: "0.1.0".to_string(),
                 repository_name: "nixpkgs".to_string(),
                 hashsum: "test-sha256".to_string(),
