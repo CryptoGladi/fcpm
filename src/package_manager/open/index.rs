@@ -216,7 +216,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::package::tests::{MetadataTest, PackageTest, PackageTestWithMetadata};
+    use crate::package::{
+        self,
+        tests::{MetadataTest, PackageTest, PackageTestWithMetadata},
+    };
     use rusqlite::OpenFlags;
     use tempfile::{TempDir, tempdir};
 
@@ -299,6 +302,17 @@ mod tests {
         package_test.name = "".to_string();
 
         index.add_package(&package_test).unwrap();
+    }
+
+    #[test_log::test]
+    fn add_package_name_with_unicode() {
+        let (_tempdir, index) = create_test_index();
+
+        let mut package_test = PackageTest::default();
+        package_test.name = "package-name-with-unicode-😅😅😅".to_string();
+        index.add_package(&package_test).unwrap();
+
+        assert_eq!(index.get_packages().unwrap(), [package_test]);
     }
 
     #[test_log::test]

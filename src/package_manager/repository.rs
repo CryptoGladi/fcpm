@@ -2,8 +2,8 @@ use crate::{
     package::Package,
     package_manager::{open::PackageManagerOpen, repository},
 };
-use serde::{Serialize, de::DeserializeOwned};
-use std::borrow::Cow;
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use std::{borrow::Cow, path::PathBuf};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -12,18 +12,18 @@ pub enum RepositoryError {
     AlreadyHave,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 enum RepositoryUrl {
     Http(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Repository {
     name: String,
     url: RepositoryUrl,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Repositories(Vec<Repository>);
 
 impl Repositories {
@@ -57,6 +57,15 @@ impl std::ops::Index<&str> for Repositories {
     }
 }
 
+fn get_path<Metadata, P>(package_manager: &impl PackageManagerOpen<Metadata, P>) -> PathBuf
+where
+    Metadata: Serialize + DeserializeOwned + Clone,
+    P: Package<Metadata>,
+{
+    let options = package_manager.get_options();
+    options.path_repository(package_manager.path())
+}
+
 pub trait PackageManagerRepository<Metadata, P>: PackageManagerOpen<Metadata, P>
 where
     Self: Sized,
@@ -64,14 +73,16 @@ where
     P: Package<Metadata>,
 {
     fn update_repositories(&mut self) -> Result<(), RepositoryError> {
-        let options = self.get_options();
-
         Ok(())
     }
 
     fn add_repository(&mut self, repository: Repository) -> Result<(), RepositoryError>;
     fn remove_repository(&mut self, name_repository: &str) -> Result<(), RepositoryError>;
-    fn get_repositories(&self) -> Result<Cow<'_, Vec<Repository>>, RepositoryError>;
+    fn get_repositories(&self) -> Result<Cow<'_, Vec<Repository>>, RepositoryError> {
+        let path = get_path(self);
+
+        todo!()
+    }
 }
 
 #[cfg(test)]

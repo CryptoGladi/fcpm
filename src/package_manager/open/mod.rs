@@ -2,54 +2,19 @@
 
 pub mod index;
 pub mod lockfile;
+pub mod options;
 
 use crate::error::Error;
 use crate::package::Package;
 use index::Index;
 use lockfile::LockFile;
+use options::Options;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::borrow::Cow;
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OpenOptions {
-    index_name: String,
-    lockfile_name: String,
-    repository_name: String,
-    repository_lock_name: String,
-    create_if_not_exists: bool,
-}
-
-impl Default for OpenOptions {
-    fn default() -> Self {
-        Self {
-            index_name: "index.sqlite".to_string(),
-            lockfile_name: "fcpm.lock".to_string(),
-            repository_name: "repo.json".to_string(),
-            repository_lock_name: "repo.lock".to_string(),
-            create_if_not_exists: true,
-        }
-    }
-}
-
-impl From<OpenOptions> for rusqlite::OpenFlags {
-    fn from(value: OpenOptions) -> Self {
-        use rusqlite::OpenFlags;
-
-        let mut open_flags = OpenFlags::SQLITE_OPEN_NO_MUTEX
-            | OpenFlags::SQLITE_OPEN_URI
-            | OpenFlags::SQLITE_OPEN_READ_WRITE;
-
-        if value.create_if_not_exists {
-            open_flags |= rusqlite::OpenFlags::SQLITE_OPEN_CREATE;
-        }
-
-        open_flags
-    }
-}
 
 #[derive(Debug, Error)]
 pub enum OpenError {
@@ -69,7 +34,7 @@ pub enum OpenError {
     LockFile(#[from] lockfile::LockFileError),
 }
 
-pub fn check_exists_files(path: impl AsRef<Path>, options: &OpenOptions) -> Result<(), OpenError> {
+pub fn check_exists_files(path: impl AsRef<Path>, options: &Options) -> Result<(), OpenError> {
     #[cfg(feature = "logging")]
     log::debug!("Run check exists files");
 
@@ -97,16 +62,18 @@ where
         #[cfg(feature = "logging")]
         log::debug!("Open package manager in path: {}", path.as_ref().display());
 
-        Self::open_with_options(path, OpenOptions::default())
+        Self::open_with_options(path, Options::default())
     }
 
-    fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error>;
+    fn open_with_options(path: impl AsRef<Path>, options: Options) -> Result<Self, Error>;
 
     fn get_lockfile(&self) -> &LockFile;
 
     fn get_index(&self) -> &Index<Metadata, P>;
 
-    fn get_options(&self) -> Cow<'_, OpenOptions>;
+    fn get_options(&self) -> Cow<'_, Options>;
+
+    fn path(&self) -> Cow<'_, Path>;
 }
 
 #[cfg(test)]
@@ -118,11 +85,12 @@ mod tests {
     pub(crate) struct PackageManagerOpenTest {
         lockfile: LockFile,
         index: Index<(), PackageTest>,
-        options: OpenOptions,
+        options: Options,
+        path: PathBuf,
     }
 
     impl PackageManagerOpen<(), PackageTest> for PackageManagerOpenTest {
-        fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error> {
+        fn open_with_options(path: impl AsRef<Path>, options: Options) -> Result<Self, Error> {
             let path_buf = path.as_ref().to_path_buf();
 
             if !options.create_if_not_exists {
@@ -138,6 +106,7 @@ mod tests {
                 index,
                 lockfile,
                 options,
+                path: path_buf,
             })
         }
 
@@ -149,8 +118,12 @@ mod tests {
             &self.index
         }
 
-        fn get_options(&self) -> Cow<'_, OpenOptions> {
+        fn get_options(&self) -> Cow<'_, Options> {
             Cow::Borrowed(&self.options)
+        }
+
+        fn path(&self) -> Cow<'_, Path> {
+            Cow::Borrowed(&self.path)
         }
     }
 
@@ -174,7 +147,7 @@ mod tests {
     #[should_panic]
     fn open_without_create_on_open() {
         let tempdir = tempdir().unwrap();
-        let options = OpenOptions {
+        let options = Options {
             create_if_not_exists: false,
             ..Default::default()
         };
@@ -205,5 +178,12 @@ mod tests {
 
         let options = package_manager.get_options().into_owned();
         assert_eq!(options, package_manager.options);
+    }
+
+    #[test_log::test]
+    fn get_path() {
+        let (tempdir, package_manager) = PackageManagerOpenTest::test_create();
+
+        assert_eq!(package_manager.path(), tempdir.path());
     }
 }
