@@ -1,5 +1,4 @@
 use crate::package::Package;
-use log::Metadata;
 use rusqlite::Connection;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{

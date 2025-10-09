@@ -1,8 +1,8 @@
+pub mod downloader;
 pub mod repository_manifest;
-pub mod repository_url;
 
 use crate::{package::Package, package_manager::open::PackageManagerOpen};
-use repository_url::RepositoryUrl;
+use downloader::Downloader;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{borrow::Cow, path::PathBuf};
 use thiserror::Error;
@@ -15,14 +15,20 @@ pub enum RepositoryError {
     #[error("Error IO")]
     IO(#[from] std::io::Error),
 
+    #[error("Link: `{0}` is invalid or not support")]
+    LinkInvalid(String),
+
     #[error("Error reqwest (http)")]
     Reqwest(#[from] reqwest::Error),
+
+    #[error("Json error")]
+    Json(#[from] serde_json::Error),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Repository {
     name: String,
-    url: RepositoryUrl,
+    url: String,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -95,7 +101,7 @@ mod tests {
 
     static REPOSITORY_TEST: LazyLock<Repository> = LazyLock::new(|| Repository {
         name: "sa".to_string(),
-        url: RepositoryUrl::Http("ew".to_string()),
+        url: "dsd".to_string(),
     });
 
     #[test_log::test]

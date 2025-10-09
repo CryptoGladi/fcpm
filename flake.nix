@@ -14,14 +14,22 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+        rust = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [
+            "rust-src"
+            "rust-analyzer"
+          ];
+        };
       in
       {
-        devShells.default = with pkgs; mkShell {
+        devShells.default = pkgs.mkShell {
           buildInputs = [
-            openssl
-            pkg-config
-            rust-bin.stable.latest.default
+            pkgs.pkg-config
+
+            rust
           ];
+
+          RUST_SRC_PATH = "${rust}/lib/rustlib/src/rust/library";
         };
       }
     );
