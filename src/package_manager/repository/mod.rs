@@ -1,7 +1,8 @@
-use crate::{
-    package::Package,
-    package_manager::{open::PackageManagerOpen, repository},
-};
+pub mod repository_manifest;
+pub mod repository_url;
+
+use crate::{package::Package, package_manager::open::PackageManagerOpen};
+use repository_url::RepositoryUrl;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{borrow::Cow, path::PathBuf};
 use thiserror::Error;
@@ -10,11 +11,12 @@ use thiserror::Error;
 pub enum RepositoryError {
     #[error("Already have repository with same name")]
     AlreadyHave,
-}
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-enum RepositoryUrl {
-    Http(String),
+    #[error("Error IO")]
+    IO(#[from] std::io::Error),
+
+    #[error("Error reqwest (http)")]
+    Reqwest(#[from] reqwest::Error),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

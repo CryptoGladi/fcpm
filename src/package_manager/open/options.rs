@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Options {
     pub index_name: String,
@@ -35,23 +33,24 @@ impl From<Options> for rusqlite::OpenFlags {
     }
 }
 
+macro_rules! impl_get_fn {
+    ($fn_name:ident, $value:ident) => {
+        pub fn $fn_name(&self, path: impl AsRef<std::path::Path>) -> std::path::PathBuf {
+            path.as_ref().join(&self.$value)
+        }
+    };
+}
+
 impl Options {
-    pub fn path_index(&self, path: impl AsRef<Path>) -> PathBuf {
-        path.as_ref().join(&self.index_name)
-    }
-
-    pub fn path_lockfile(&self, path: impl AsRef<Path>) -> PathBuf {
-        path.as_ref().join(&self.lockfile_name)
-    }
-
-    pub fn path_repository(&self, path: impl AsRef<Path>) -> PathBuf {
-        path.as_ref().join(&self.repository_name)
-    }
+    impl_get_fn!(path_index, index_name);
+    impl_get_fn!(path_lockfile, lockfile_name);
+    impl_get_fn!(path_repository, repository_name);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test_log::test]
     fn from_rusqlite() {
