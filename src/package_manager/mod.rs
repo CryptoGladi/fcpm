@@ -5,8 +5,6 @@ use crate::package::Package;
 use crate::package_manager::open::PackageManagerOpen;
 use crate::package_manager::repository::PackageManagerRepository;
 use repository::Repository;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use std::path::Path;
 
 pub trait PackageManager<P>: PackageManagerOpen<P> + PackageManagerRepository<P>

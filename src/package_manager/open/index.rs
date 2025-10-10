@@ -1,6 +1,5 @@
 use crate::package::Package;
 use rusqlite::Connection;
-use serde::{Serialize, de::DeserializeOwned};
 use std::{
     marker::PhantomData,
     path::{Path, PathBuf},

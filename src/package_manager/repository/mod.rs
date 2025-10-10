@@ -2,7 +2,7 @@ pub mod downloader;
 pub mod repository_manifest;
 
 use crate::{package::Package, package_manager::open::PackageManagerOpen};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, path::PathBuf};
 use thiserror::Error;
 
@@ -84,7 +84,7 @@ where
     fn add_repository(&mut self, repository: Repository) -> Result<(), RepositoryError>;
     fn remove_repository(&mut self, name_repository: &str) -> Result<(), RepositoryError>;
     fn get_repositories(&self) -> Result<Cow<'_, Vec<Repository>>, RepositoryError> {
-        let path = get_path(self);
+        let _path = get_path(self);
 
         todo!()
     }

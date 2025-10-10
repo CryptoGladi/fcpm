@@ -1,3 +1,4 @@
+#[allow(clippy::non_minimal_cfg, reason = "For feature")]
 #[cfg(any(not(feature = "http")))]
 compile_error!("Not found method for downloading from network");
 
@@ -40,7 +41,7 @@ impl<'a> Downloader<'a> {
         #[cfg(feature = "logging")]
         log::debug!("Downloading repository manifest from: {:?}...", self.url);
 
-        let strategy = DownloaderType::get(&self.url)
+        let strategy = DownloaderType::get(self.url)
             .ok_or(RepositoryError::LinkInvalid(self.url.to_string()))?;
 
         let manifest_str = match strategy {
@@ -65,6 +66,11 @@ impl<'a> Downloader<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test_log::test]
+    fn downloader_empty_string() {
+        assert!(matches!(DownloaderType::get(""), None));
+    }
 
     #[test_log::test]
     fn downloader_type_not_found() {

@@ -9,8 +9,6 @@ use crate::package::Package;
 use index::Index;
 use lockfile::LockFile;
 use options::Options;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use std::borrow::Cow;
 use std::fs;
 use std::path::{Path, PathBuf};

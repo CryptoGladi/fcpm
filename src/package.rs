@@ -27,11 +27,10 @@ pub trait Package {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use super::*;
     use serde::Deserialize;
 
-    use super::*;
-
-    #[derive(PartialEq, Eq, Debug)]
+    #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
     pub(crate) struct PackageTest {
         pub name: String,
         pub version: String,

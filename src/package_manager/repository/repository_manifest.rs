@@ -1,6 +1,9 @@
+pub mod package_manifest;
+
 use crate::{package::Package, package_manager::repository::RepositoryError};
+use package_manifest::PackageManifest;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use std::{fs::OpenOptions, io::Write, marker::PhantomData, path::Path};
+use std::{fmt::Debug, fs::OpenOptions, io::Write, path::Path};
 
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RepositoryManifest<P>
@@ -9,11 +12,37 @@ where
 {
     pub name: String,
     pub url: String,
-    pub packages: Vec<P>,
+    pub packages: Vec<PackageManifest<P>>,
 }
 
-/*
-impl RepositoryManifest {
+impl<P> RepositoryManifest<P>
+where
+    P: Package,
+{
+    pub fn add_package(&mut self, package: P) {
+        #[cfg(feature = "logging")]
+        log::debug!("Add package: `{}`", package.name());
+
+        // TODO Check same name
+
+        let package_manifest = PackageManifest::from(package);
+        self.packages.push(package_manifest);
+    }
+
+    pub fn get_package(&self, package_name: &str) -> Option<&PackageManifest<P>> {
+        #[cfg(feature = "logging")]
+        log::debug!("Get package from name: {package_name}");
+
+        self.packages
+            .iter()
+            .find(|package| package.name == package_name)
+    }
+}
+
+impl<P> RepositoryManifest<P>
+where
+    P: Package + Serialize,
+{
     pub fn save_to_file(&self, path: impl AsRef<Path>) -> Result<(), RepositoryError> {
         #[cfg(feature = "logging")]
         log::debug!(
@@ -29,7 +58,12 @@ impl RepositoryManifest {
 
         Ok(())
     }
+}
 
+impl<P> RepositoryManifest<P>
+where
+    P: Package + DeserializeOwned,
+{
     pub fn parse(manifest: &str) -> Result<Self, RepositoryError> {
         #[cfg(feature = "logging")]
         log::debug!("Parse from string repository manifest");
@@ -38,7 +72,10 @@ impl RepositoryManifest {
     }
 }
 
-impl std::str::FromStr for RepositoryManifest {
+impl<P> std::str::FromStr for RepositoryManifest<P>
+where
+    P: Package + DeserializeOwned,
+{
     type Err = RepositoryError;
 
     fn from_str(manifest: &str) -> Result<Self, Self::Err> {
@@ -46,22 +83,44 @@ impl std::str::FromStr for RepositoryManifest {
     }
 }
 
-impl std::string::ToString for RepositoryManifest {
-    fn to_string(&self) -> String {
-        serde_json::to_string(self).expect("Serde error")
+impl<P> std::fmt::Display for RepositoryManifest<P>
+where
+    P: Package + Serialize,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(&self).expect("Serialize to json error")
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
+    use crate::package::tests::PackageTest;
+    use std::str::FromStr;
     use tempfile::tempdir;
+
+    pub(crate) type RepositoryManifestTest = RepositoryManifest<PackageTest>;
+
+    #[test_log::test]
+    fn add_get_package() {
+        let mut repository_manifest = RepositoryManifestTest::default();
+        let package = PackageTest::default();
+
+        repository_manifest.add_package(package.clone());
+
+        assert_eq!(
+            repository_manifest.get_package(&package.name),
+            Some(&PackageManifest::from(package))
+        );
+    }
 
     #[test_log::test]
     fn save_to_file() {
-        let mut repository_manifest = RepositoryManifest::default();
+        let mut repository_manifest = RepositoryManifestTest::default();
         repository_manifest.name = "test-repo".to_string();
 
         let tempdir = tempdir().unwrap();
@@ -76,7 +135,7 @@ mod tests {
 
     #[test_log::test]
     fn parse() {
-        let mut repository_manifest = RepositoryManifest::default();
+        let mut repository_manifest = RepositoryManifestTest::default();
         repository_manifest.name = "test-repo".to_string();
 
         let json = repository_manifest.to_string();
@@ -92,4 +151,3 @@ mod tests {
         );
     }
 }
-*/
