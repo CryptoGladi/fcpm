@@ -2,7 +2,6 @@ pub mod downloader;
 pub mod repository_manifest;
 
 use crate::{package::Package, package_manager::open::PackageManagerOpen};
-use downloader::Downloader;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{borrow::Cow, path::PathBuf};
 use thiserror::Error;
@@ -65,20 +64,18 @@ impl std::ops::Index<&str> for Repositories {
     }
 }
 
-fn get_path<Metadata, P>(package_manager: &impl PackageManagerOpen<Metadata, P>) -> PathBuf
+fn get_path<P>(package_manager: &impl PackageManagerOpen<P>) -> PathBuf
 where
-    Metadata: Serialize + DeserializeOwned + Clone,
-    P: Package<Metadata>,
+    P: Package,
 {
     let options = package_manager.get_options();
     options.path_repository(package_manager.path())
 }
 
-pub trait PackageManagerRepository<Metadata, P>: PackageManagerOpen<Metadata, P>
+pub trait PackageManagerRepository<P>: PackageManagerOpen<P>
 where
     Self: Sized,
-    Metadata: Serialize + DeserializeOwned + Clone,
-    P: Package<Metadata>,
+    P: Package,
 {
     fn update_repositories(&mut self) -> Result<(), RepositoryError> {
         Ok(())

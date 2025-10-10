@@ -8,34 +8,27 @@ use std::{
 use thiserror::Error;
 
 #[derive(Debug)]
-pub struct Index<Metadata, P>
+pub struct Index<P>
 where
-    Metadata: Serialize + DeserializeOwned + Clone,
-    P: Package<Metadata>,
+    P: Package,
 {
     path: PathBuf,
     db: rusqlite::Connection,
 
     #[allow(dead_code)]
-    phantom: (PhantomData<Metadata>, PhantomData<P>),
+    phantom: PhantomData<P>,
 }
 
-impl<Metadata, P> PartialEq for Index<Metadata, P>
+impl<P> PartialEq for Index<P>
 where
-    Metadata: Serialize + DeserializeOwned + Clone,
-    P: Package<Metadata>,
+    P: Package,
 {
     fn eq(&self, other: &Self) -> bool {
         self.path == other.path
     }
 }
 
-impl<Metadata, P> Eq for Index<Metadata, P>
-where
-    Metadata: Serialize + DeserializeOwned + Clone,
-    P: Package<Metadata>,
-{
-}
+impl<P> Eq for Index<P> where P: Package {}
 
 #[derive(Debug, Error)]
 pub enum IndexError {
@@ -49,10 +42,9 @@ pub enum IndexError {
     PackageNotFound(String),
 }
 
-impl<Metadata, P> Index<Metadata, P>
+impl<P> Index<P>
 where
-    Metadata: Serialize + DeserializeOwned + Clone,
-    P: Package<Metadata>,
+    P: Package,
 {
     pub fn open(
         path: impl AsRef<Path>,
@@ -67,7 +59,7 @@ where
         let index = Self {
             path: path_buf,
             db,
-            phantom: (PhantomData, PhantomData),
+            phantom: PhantomData,
         };
 
         index.init()?;
@@ -103,7 +95,7 @@ where
         Ok(())
     }
 
-    pub fn add_package(&self, package: &impl Package<Metadata>) -> Result<(), IndexError> {
+    pub fn add_package(&self, package: &impl Package) -> Result<(), IndexError> {
         #[cfg(feature = "logging")]
         log::debug!("Add package `{}`", package.name());
 
@@ -222,8 +214,8 @@ mod tests {
     use rusqlite::OpenFlags;
     use tempfile::{TempDir, tempdir};
 
-    pub(crate) type IndexTest = Index<(), PackageTest>;
-    pub(crate) type IndexTestWithMetadata = Index<MetadataTest, PackageTestWithMetadata>;
+    pub(crate) type IndexTest = Index<PackageTest>;
+    pub(crate) type IndexTestWithMetadata = Index<PackageTestWithMetadata>;
 
     pub(crate) fn create_test_index() -> (TempDir, IndexTest) {
         let tempdir = tempdir().unwrap();

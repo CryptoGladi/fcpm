@@ -9,12 +9,10 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::path::Path;
 
-pub trait PackageManager<Metadata, P>:
-    PackageManagerOpen<Metadata, P> + PackageManagerRepository<Metadata, P>
+pub trait PackageManager<P>: PackageManagerOpen<P> + PackageManagerRepository<P>
 where
     Self: Sized,
-    Metadata: Serialize + DeserializeOwned + Clone,
-    P: Package<Metadata>,
+    P: Package,
 {
     fn install_package_from_repository(&mut self, repository: Repository, name_package: &str);
     fn install_package_from_manifest(&mut self, path: impl AsRef<Path>);

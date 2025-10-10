@@ -52,11 +52,10 @@ pub fn check_exists_files(path: impl AsRef<Path>, options: &Options) -> Result<(
     Ok(())
 }
 
-pub trait PackageManagerOpen<Metadata, P>
+pub trait PackageManagerOpen<P>
 where
     Self: Sized,
-    Metadata: Serialize + DeserializeOwned + Clone,
-    P: Package<Metadata>,
+    P: Package,
 {
     fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
         #[cfg(feature = "logging")]
@@ -69,7 +68,7 @@ where
 
     fn get_lockfile(&self) -> &LockFile;
 
-    fn get_index(&self) -> &Index<Metadata, P>;
+    fn get_index(&self) -> &Index<P>;
 
     fn get_options(&self) -> Cow<'_, Options>;
 
@@ -84,12 +83,12 @@ mod tests {
 
     pub(crate) struct PackageManagerOpenTest {
         lockfile: LockFile,
-        index: Index<(), PackageTest>,
+        index: Index<PackageTest>,
         options: Options,
         path: PathBuf,
     }
 
-    impl PackageManagerOpen<(), PackageTest> for PackageManagerOpenTest {
+    impl PackageManagerOpen<PackageTest> for PackageManagerOpenTest {
         fn open_with_options(path: impl AsRef<Path>, options: Options) -> Result<Self, Error> {
             let path_buf = path.as_ref().to_path_buf();
 
@@ -114,7 +113,7 @@ mod tests {
             &self.lockfile
         }
 
-        fn get_index(&self) -> &Index<(), PackageTest> {
+        fn get_index(&self) -> &Index<PackageTest> {
             &self.index
         }
 

@@ -1,20 +1,18 @@
-use crate::package_manager::repository::RepositoryError;
-use serde::{Deserialize, Serialize};
-use std::{fs::OpenOptions, io::Write, path::Path};
+use crate::{package::Package, package_manager::repository::RepositoryError};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use std::{fs::OpenOptions, io::Write, marker::PhantomData, path::Path};
 
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct PackageManifest {
-    pub name: String,
-    pub version: String,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct RepositoryManifest {
+pub struct RepositoryManifest<P>
+where
+    P: Package,
+{
     pub name: String,
     pub url: String,
-    pub packages: Vec<PackageManifest>,
+    pub packages: Vec<P>,
 }
 
+/*
 impl RepositoryManifest {
     pub fn save_to_file(&self, path: impl AsRef<Path>) -> Result<(), RepositoryError> {
         #[cfg(feature = "logging")]
@@ -94,3 +92,4 @@ mod tests {
         );
     }
 }
+*/

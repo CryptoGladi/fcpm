@@ -2,16 +2,15 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::borrow::Cow;
 
-pub trait Package<Metadata>
-where
-    Metadata: Serialize + DeserializeOwned + Clone,
-{
+pub trait Package {
+    type Metadata: Serialize + DeserializeOwned + Clone;
+
     fn new(
         name: String,
         version: String,
         repository_name: String,
         hashsum: String,
-        metadata: Metadata,
+        metadata: Self::Metadata,
     ) -> Self;
 
     fn name(&self) -> Cow<'_, str>;
@@ -23,7 +22,7 @@ where
 
     fn hashsum(&self) -> Cow<'_, str>;
 
-    fn metadata(&self) -> Cow<'_, Metadata>;
+    fn metadata(&self) -> Cow<'_, Self::Metadata>;
 }
 
 #[cfg(test)]
@@ -51,7 +50,9 @@ pub(crate) mod tests {
         }
     }
 
-    impl Package<()> for PackageTest {
+    impl Package for PackageTest {
+        type Metadata = ();
+
         fn new(
             name: String,
             version: String,
@@ -120,7 +121,9 @@ pub(crate) mod tests {
         }
     }
 
-    impl Package<MetadataTest> for PackageTestWithMetadata {
+    impl Package for PackageTestWithMetadata {
+        type Metadata = MetadataTest;
+
         fn new(
             name: String,
             version: String,
