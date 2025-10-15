@@ -3,18 +3,28 @@ use std::path::PathBuf;
 use std::{fs::File, path::Path};
 use thiserror::Error;
 
+/// Errors that can occur when working with the lockfile.
 #[derive(Debug, Error)]
 pub enum LockFileError {
+    /// An I/O error occurred.
     #[error("IO error: `{0}`")]
     IO(#[from] std::io::Error),
 
+    /// A file locking error occurred.
     #[error("Lock error: `{0}`")]
     Lock(#[from] std::fs::TryLockError),
 }
 
+/// A file-based lock to prevent concurrent access to a resource.
+///
+/// The `LockFile` creates a lock file and uses file locking to ensure exclusive access.
+/// When the `LockFile` is dropped, the lock is released and the file is removed.
 #[derive(Debug)]
 pub struct LockFile {
+    /// The locked file handle.
     file: File,
+
+    /// The path to the lock file.
     path: PathBuf,
 }
 
@@ -27,6 +37,31 @@ impl PartialEq for LockFile {
 impl Eq for LockFile {}
 
 impl LockFile {
+    /// Creates a new lockfile at the specified path.
+    ///
+    /// This method creates the lock file if it doesn't exist, opens it for appending,
+    /// and acquires an exclusive lock on it.
+    ///
+    /// # Parameters
+    ///
+    /// * `path` - The path where the lock file should be created.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing the `LockFile` or a [`LockFileError`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LockFileError::IO`] if the file cannot be created or opened.
+    /// Returns [`LockFileError::Lock`] if the lock cannot be acquired.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use fcpm::package_manager::open::lockfile::LockFile;
+    ///
+    /// let lock = LockFile::new("my.lock")?;
+    /// ```
     pub fn new(path: impl AsRef<Path>) -> Result<Self, LockFileError> {
         let path_buf = path.as_ref().to_path_buf();
 
@@ -46,6 +81,19 @@ impl LockFile {
         })
     }
 
+    /// Releases the lock and removes the lock file.
+    ///
+    /// This method unlocks the file and deletes it from the filesystem.
+    /// It is automatically called when the `LockFile` is dropped.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on success or a [`LockFileError`] on failure.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LockFileError::Lock`] if unlocking fails.
+    /// Returns [`LockFileError::IO`] if removing the file fails.
     fn unlock(&self) -> Result<(), LockFileError> {
         #[cfg(feature = "logging")]
         log::debug!("Unlocking log file: `{}`", self.path.display());
@@ -58,6 +106,7 @@ impl LockFile {
 }
 
 impl Drop for LockFile {
+    #[cfg_attr(not(feature = "logging"), allow(unused_variables))]
     fn drop(&mut self) {
         if let Err(unlock_error) = self.unlock() {
             #[cfg(feature = "logging")]

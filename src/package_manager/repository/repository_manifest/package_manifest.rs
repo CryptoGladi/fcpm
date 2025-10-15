@@ -55,14 +55,11 @@ impl<P> Eq for PackageManifest<P> where P: Package {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::package::tests::{PackageTest, PackageTestWithMetadata};
-
-    pub(crate) type PackageManifestTest = PackageManifest<PackageTest>;
-    pub(crate) type PackageManifestTestWithMetadata = PackageManifest<PackageTestWithMetadata>;
+    use crate::example::package::{PackageExample, PackageExampleWithMetadata};
 
     #[test_log::test]
     fn from_package() {
-        let package_test = PackageTest::default();
+        let package_test = PackageExample::default();
         let package_test_manifest = PackageManifest::from(package_test.clone());
 
         assert_eq!(
@@ -83,8 +80,8 @@ mod tests {
 
     #[test_log::test]
     fn debug() {
-        let p1 = PackageManifest::from(PackageTest::default());
-        let p2 = PackageManifest::from(PackageTestWithMetadata::default());
+        let p1 = PackageManifest::from(PackageExample::default());
+        let p2 = PackageManifest::from(PackageExampleWithMetadata::default());
 
         assert_eq!(
             format!("{p1:?}"),
@@ -99,8 +96,8 @@ mod tests {
 
     #[test_log::test]
     fn partical_eq() {
-        let p1 = PackageManifest::from(PackageTest::default());
-        let mut p2 = PackageManifest::from(PackageTest::default());
+        let p1 = PackageManifest::from(PackageExample::default());
+        let mut p2 = PackageManifest::from(PackageExample::default());
 
         p2.name = "123".to_string();
 
@@ -113,8 +110,8 @@ mod tests {
 
     #[test_log::test]
     fn partical_eq_with_metadata() {
-        let p1 = PackageManifest::from(PackageTestWithMetadata::default());
-        let mut p2 = PackageManifest::from(PackageTestWithMetadata::default());
+        let p1 = PackageManifest::from(PackageExampleWithMetadata::default());
+        let mut p2 = PackageManifest::from(PackageExampleWithMetadata::default());
 
         p2.metadata.author = "NotCryptoGladi".to_string();
 

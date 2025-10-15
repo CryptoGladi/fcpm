@@ -23,7 +23,7 @@ where
         #[cfg(feature = "logging")]
         log::debug!("Add package: `{}`", package.name());
 
-        // TODO Check same name
+        // TODO Check same name and version
 
         let package_manifest = PackageManifest::from(package);
         self.packages.push(package_manifest);
@@ -99,16 +99,16 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::package::tests::PackageTest;
+    use crate::example::package::PackageExample;
     use std::str::FromStr;
     use tempfile::tempdir;
 
-    pub(crate) type RepositoryManifestTest = RepositoryManifest<PackageTest>;
+    pub(crate) type RepositoryManifestTest = RepositoryManifest<PackageExample>;
 
     #[test_log::test]
     fn add_get_package() {
         let mut repository_manifest = RepositoryManifestTest::default();
-        let package = PackageTest::default();
+        let package = PackageExample::default();
 
         repository_manifest.add_package(package.clone());
 

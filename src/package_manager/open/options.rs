@@ -1,12 +1,12 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Options {
+pub struct OpenOptions {
     pub index_name: String,
     pub lockfile_name: String,
     pub repository_name: String,
     pub create_if_not_exists: bool,
 }
 
-impl Default for Options {
+impl Default for OpenOptions {
     fn default() -> Self {
         Self {
             index_name: "index.sqlite".to_string(),
@@ -17,8 +17,8 @@ impl Default for Options {
     }
 }
 
-impl From<Options> for rusqlite::OpenFlags {
-    fn from(value: Options) -> Self {
+impl From<OpenOptions> for rusqlite::OpenFlags {
+    fn from(value: OpenOptions) -> Self {
         use rusqlite::OpenFlags;
 
         let mut open_flags = OpenFlags::SQLITE_OPEN_NO_MUTEX
@@ -41,7 +41,7 @@ macro_rules! impl_get_fn {
     };
 }
 
-impl Options {
+impl OpenOptions {
     impl_get_fn!(path_index, index_name);
     impl_get_fn!(path_lockfile, lockfile_name);
     impl_get_fn!(path_repository, repository_name);
@@ -56,7 +56,7 @@ mod tests {
     fn from_rusqlite() {
         use rusqlite::OpenFlags;
 
-        let mut options = Options::default();
+        let mut options = OpenOptions::default();
         options.create_if_not_exists = false;
         let sqlite_options: OpenFlags = options.into();
 
@@ -72,7 +72,7 @@ mod tests {
     fn from_rusqlite_with_create_in_open() {
         use rusqlite::OpenFlags;
 
-        let mut options = Options::default();
+        let mut options = OpenOptions::default();
         options.create_if_not_exists = true;
 
         let sqlite_options: OpenFlags = options.into();
@@ -88,7 +88,7 @@ mod tests {
 
     #[test_log::test]
     fn path_to_index() {
-        let options = Options::default();
+        let options = OpenOptions::default();
 
         assert_eq!(
             options.path_index("folder"),
@@ -98,7 +98,7 @@ mod tests {
 
     #[test_log::test]
     fn path_to_lockfile() {
-        let options = Options::default();
+        let options = OpenOptions::default();
 
         assert_eq!(
             options.path_lockfile("folder"),
@@ -108,7 +108,7 @@ mod tests {
 
     #[test_log::test]
     fn path_to_repository_name() {
-        let options = Options::default();
+        let options = OpenOptions::default();
 
         assert_eq!(
             options.path_repository("folder"),

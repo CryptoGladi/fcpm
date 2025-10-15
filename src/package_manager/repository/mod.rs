@@ -17,6 +17,7 @@ pub enum RepositoryError {
     #[error("Link: `{0}` is invalid or not support")]
     LinkInvalid(String),
 
+    #[cfg(feature = "http")]
     #[error("Error reqwest (http)")]
     Reqwest(#[from] reqwest::Error),
 

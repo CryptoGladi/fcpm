@@ -6,15 +6,38 @@ use std::{
 };
 use thiserror::Error;
 
+/// A SQLite-based index for managing packages.
+///
+/// The `Index` struct provides an interface to store, retrieve, and manage packages
+/// in a SQLite database. It supports operations like adding, deleting, and querying packages.
+///
+/// # Type Parameters
+///
+/// * `P` - The type of package, must implement [`Package`].
+///
+/// # Examples
+///
+/// ```no_run
+/// use fcpm::Index;
+/// use fcpm::example::package::PackageExample as Package;
+/// use rusqlite::OpenFlags;
+///
+/// let index: Index<Package> = Index::<Package>::open("index.sqlite", OpenFlags::default()).unwrap();
+///
+/// let some_package = Package::default();
+/// index.add_package(&some_package).unwrap();
+/// ```
 #[derive(Debug)]
 pub struct Index<P>
 where
     P: Package,
 {
+    /// The path to the SQLite database file.
     path: PathBuf,
+
+    /// The SQLite database connection.
     db: rusqlite::Connection,
 
-    #[allow(dead_code)]
     phantom: PhantomData<P>,
 }
 
@@ -29,14 +52,18 @@ where
 
 impl<P> Eq for Index<P> where P: Package {}
 
+/// Errors that can occur when interacting with the index.
 #[derive(Debug, Error)]
 pub enum IndexError {
+    /// A SQLite database error occurred.
     #[error("SQLite error: `{0}`")]
     SQLite(#[from] rusqlite::Error),
 
+    /// A JSON serialization/deserialization error occurred.
     #[error("Json error: `{0}`")]
     Json(#[from] serde_json::Error),
 
+    /// The specified package was not found.
     #[error("Package `{0}` not found")]
     PackageNotFound(String),
 }
@@ -45,6 +72,27 @@ impl<P> Index<P>
 where
     P: Package,
 {
+    /// Opens an index at the specified path with the given SQLite open flags.
+    /// This method initializes the SQLite database and creates the necessary tables if they don't exist.
+    ///
+    /// # Parameters
+    ///
+    /// * `path` - The path to the SQLite database file.
+    /// * `open_flags` - The flags to use when opening the database.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing the opened `Index` or an [`IndexError`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use fcpm::Index;
+    /// use rusqlite::OpenFlags;
+    /// use fcpm::example::package::PackageExample as Package;
+    ///
+    /// let index: Index<Package> = Index::open("index.sqlite", OpenFlags::default()).unwrap();
+    /// ```
     pub fn open(
         path: impl AsRef<Path>,
         open_flags: rusqlite::OpenFlags,
@@ -55,7 +103,7 @@ where
         log::debug!("Open index to path: {}", path_buf.display());
 
         let db = Connection::open_with_flags(path, open_flags)?;
-        let index = Self {
+        let mut index = Self {
             path: path_buf,
             db,
             phantom: PhantomData,
@@ -66,7 +114,7 @@ where
         Ok(index)
     }
 
-    fn init(&self) -> Result<(), IndexError> {
+    fn init(&mut self) -> Result<(), IndexError> {
         #[cfg(feature = "logging")]
         log::debug!("Init database for index in path: `{}`", self.path.display());
 
@@ -94,7 +142,34 @@ where
         Ok(())
     }
 
-    pub fn add_package(&self, package: &impl Package) -> Result<(), IndexError> {
+    /// Adds a package to the index.
+    ///
+    /// # Parameters
+    ///
+    /// * `package` - The package to add, must implement [`Package`].
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on success or an [`IndexError`] on failure.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IndexError::SQLite`] if a database error occurs.
+    /// Returns [`IndexError::Json`] if metadata serialization fails.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use fcpm::Index;
+    /// use fcpm::example::package::PackageExample as Package;
+    /// use rusqlite::OpenFlags;
+    ///
+    /// let mut index = Index::open("index.sqlite", OpenFlags::default());
+    /// let package = PackageTest::default();
+    ///
+    /// index.add_package(&package)?;
+    /// ```
+    pub fn add_package(&mut self, package: &impl Package) -> Result<(), IndexError> {
         #[cfg(feature = "logging")]
         log::debug!("Add package `{}`", package.name());
 
@@ -116,7 +191,31 @@ where
         Ok(())
     }
 
-    pub fn delete_package(&self, package_name: &str) -> Result<(), IndexError> {
+    /// Deletes a package from the index by name.
+    ///
+    /// # Parameters
+    ///
+    /// * `package_name` - The name of the package to delete.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on success or an [`IndexError`] on failure.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IndexError::PackageNotFound`] if the package does not exist.
+    /// Returns [`IndexError::SQLite`] if a database error occurs.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fcpm::package_manager::open::index::Index;
+    ///
+    /// let index = // ... open index
+    /// index.delete_package("my-package")?;
+    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// ```
+    pub fn delete_package(&mut self, package_name: &str) -> Result<(), IndexError> {
         #[cfg(feature = "logging")]
         log::debug!("Delete package by name: `{package_name}`");
 
@@ -132,6 +231,31 @@ where
         Ok(())
     }
 
+    /// Retrieves a package from the index by name.
+    ///
+    /// # Parameters
+    ///
+    /// * `package_name` - The name of the package to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing the package or an [`IndexError`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IndexError::SQLite`] if a database error occurs or the package is not found.
+    /// Returns [`IndexError::Json`] if metadata deserialization fails.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fcpm::package_manager::open::index::Index;
+    /// use fcpm::package::tests::PackageTest;
+    ///
+    /// let index = // ... open index
+    /// let package: PackageTest = index.get_package("my-package")?;
+    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// ```
     pub fn get_package(&self, package_name: &str) -> Result<P, IndexError> {
         #[cfg(feature = "logging")]
         log::debug!("Get package by name: {package_name}");
@@ -161,6 +285,27 @@ where
         Ok(package)
     }
 
+    /// Retrieves all packages from the index.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing a vector of packages or an [`IndexError`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IndexError::SQLite`] if a database error occurs.
+    /// Returns [`IndexError::Json`] if metadata deserialization fails.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fcpm::package_manager::open::index::Index;
+    /// use fcpm::package::tests::PackageTest;
+    ///
+    /// let index = // ... open index
+    /// let packages: Vec<PackageTest> = index.get_packages()?;
+    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// ```
     pub fn get_packages(&self) -> Result<Vec<P>, IndexError> {
         #[cfg(feature = "logging")]
         log::debug!("Get all packages");
@@ -191,6 +336,30 @@ where
         Ok(packages)
     }
 
+    /// Checks if a package exists in the index.
+    ///
+    /// # Parameters
+    ///
+    /// * `package_name` - The name of the package to check.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(true)` if the package exists, `Ok(false)` if it does not, or an [`IndexError`] on failure.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IndexError::SQLite`] if a database error occurs (other than not found).
+    /// Returns [`IndexError::Json`] if metadata deserialization fails.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fcpm::package_manager::open::index::Index;
+    ///
+    /// let index = // ... open index
+    /// let exists = index.have_package("my-package")?;
+    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// ```
     pub fn have_package(&self, package_name: &str) -> Result<bool, IndexError> {
         #[cfg(feature = "logging")]
         log::debug!("Have package: {package_name}?");
@@ -206,15 +375,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::package::{
-        self,
-        tests::{MetadataTest, PackageTest, PackageTestWithMetadata},
-    };
+    use crate::example::package::{PackageExample, PackageExampleWithMetadata};
     use rusqlite::OpenFlags;
     use tempfile::{TempDir, tempdir};
 
-    pub(crate) type IndexTest = Index<PackageTest>;
-    pub(crate) type IndexTestWithMetadata = Index<PackageTestWithMetadata>;
+    pub(crate) type IndexTest = Index<PackageExample>;
+    pub(crate) type IndexTestWithMetadata = Index<PackageExampleWithMetadata>;
 
     pub(crate) fn create_test_index() -> (TempDir, IndexTest) {
         let tempdir = tempdir().unwrap();
@@ -251,16 +417,16 @@ mod tests {
 
     #[test_log::test]
     fn add_package() {
-        let (_tempdir, index) = create_test_index();
-        let package_test = PackageTest::default();
+        let (_tempdir, mut index) = create_test_index();
+        let package_test = PackageExample::default();
 
         index.add_package(&package_test).unwrap();
     }
 
     #[test_log::test]
     fn add_package_with_metadata() {
-        let (_tempdir, index) = create_test_index_with_metadata();
-        let package_test = PackageTestWithMetadata::default();
+        let (_tempdir, mut index) = create_test_index_with_metadata();
+        let package_test = PackageExampleWithMetadata::default();
 
         index.add_package(&package_test).unwrap();
     }
@@ -268,13 +434,13 @@ mod tests {
     #[test_log::test]
     #[should_panic]
     fn add_package_with_same_name() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
-        let package_test1 = PackageTest {
+        let package_test1 = PackageExample {
             name: "supername".to_string(),
             ..Default::default()
         };
-        let package_test2 = PackageTest {
+        let package_test2 = PackageExample {
             name: "supername".to_string(),
             ..Default::default()
         };
@@ -286,9 +452,9 @@ mod tests {
     #[test_log::test]
     #[should_panic]
     fn add_package_without_name() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
-        let mut package_test = PackageTest::default();
+        let mut package_test = PackageExample::default();
         package_test.name = "".to_string();
 
         index.add_package(&package_test).unwrap();
@@ -296,9 +462,9 @@ mod tests {
 
     #[test_log::test]
     fn add_package_name_with_unicode() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
-        let mut package_test = PackageTest::default();
+        let mut package_test = PackageExample::default();
         package_test.name = "package-name-with-unicode-😅😅😅".to_string();
         index.add_package(&package_test).unwrap();
 
@@ -308,9 +474,9 @@ mod tests {
     #[test_log::test]
     #[should_panic]
     fn add_package_without_version() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
-        let mut package_test = PackageTest::default();
+        let mut package_test = PackageExample::default();
         package_test.version = "".to_string();
 
         index.add_package(&package_test).unwrap();
@@ -319,9 +485,9 @@ mod tests {
     #[test_log::test]
     #[should_panic]
     fn add_package_without_repository_name() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
-        let mut package_test = PackageTest::default();
+        let mut package_test = PackageExample::default();
         package_test.repository_name = "".to_string();
 
         index.add_package(&package_test).unwrap();
@@ -330,9 +496,9 @@ mod tests {
     #[test_log::test]
     #[should_panic]
     fn add_package_without_hashsum() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
-        let mut package_test = PackageTest::default();
+        let mut package_test = PackageExample::default();
         package_test.hashsum = "".to_string();
 
         index.add_package(&package_test).unwrap();
@@ -340,9 +506,9 @@ mod tests {
 
     #[test_log::test]
     fn delete_package() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
-        let package_test = PackageTest::default();
+        let package_test = PackageExample::default();
 
         index.add_package(&package_test).unwrap();
         index.delete_package(&package_test.name).unwrap();
@@ -351,16 +517,16 @@ mod tests {
     #[test_log::test]
     #[should_panic]
     fn delete_no_existent_package() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
         index.delete_package("not package").unwrap(); // PANIC
     }
 
     #[test_log::test]
     fn get_package() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
-        let package = PackageTest::default();
+        let package = PackageExample::default();
         index.add_package(&package).unwrap();
 
         let got_package = index.get_package(&package.name).unwrap();
@@ -369,9 +535,9 @@ mod tests {
 
     #[test_log::test]
     fn get_package_with_metadata() {
-        let (_tempdir, index) = create_test_index_with_metadata();
+        let (_tempdir, mut index) = create_test_index_with_metadata();
 
-        let package = PackageTestWithMetadata::default();
+        let package = PackageExampleWithMetadata::default();
         index.add_package(&package).unwrap();
 
         let got_package = index.get_package(&package.name).unwrap();
@@ -382,9 +548,9 @@ mod tests {
     #[test_log::test]
     #[should_panic]
     fn get_package_not_found() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
-        let package = PackageTest::default();
+        let package = PackageExample::default();
         index.add_package(&package).unwrap();
 
         assert_ne!(package.name, "is_not_package");
@@ -393,8 +559,8 @@ mod tests {
 
     #[test_log::test]
     fn add_get_delete_package() {
-        let (_tempdir, index) = create_test_index();
-        let package = PackageTest::default();
+        let (_tempdir, mut index) = create_test_index();
+        let package = PackageExample::default();
 
         index.add_package(&package).unwrap();
         let got_package = index.get_package(&package.name).unwrap();
@@ -411,8 +577,8 @@ mod tests {
 
     #[test_log::test]
     fn have_package() {
-        let (_tempdir, index) = create_test_index();
-        let package = PackageTest::default();
+        let (_tempdir, mut index) = create_test_index();
+        let package = PackageExample::default();
 
         index.add_package(&package).unwrap();
         assert!(index.have_package(&package.name).unwrap());
@@ -420,11 +586,11 @@ mod tests {
 
     #[test_log::test]
     fn get_packages() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
         assert_eq!(index.get_packages().unwrap(), []);
 
-        let package_test = PackageTest::default();
+        let package_test = PackageExample::default();
         index.add_package(&package_test).unwrap();
 
         assert_eq!(index.get_packages().unwrap(), [package_test]);
@@ -432,11 +598,11 @@ mod tests {
 
     #[test_log::test]
     fn get_packages_with_metadata() {
-        let (_tempdir, index) = create_test_index_with_metadata();
+        let (_tempdir, mut index) = create_test_index_with_metadata();
 
         assert_eq!(index.get_packages().unwrap(), []);
 
-        let package = PackageTestWithMetadata::default();
+        let package = PackageExampleWithMetadata::default();
         index.add_package(&package).unwrap();
 
         assert_eq!(index.get_packages().unwrap(), [package]);

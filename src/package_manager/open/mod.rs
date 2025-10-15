@@ -1,4 +1,4 @@
-//! Core trait
+//! Trait for opening package managers.
 
 pub mod index;
 pub mod lockfile;
@@ -8,31 +8,37 @@ use crate::error::Error;
 use crate::package::Package;
 use index::Index;
 use lockfile::LockFile;
-use options::Options;
+use options::OpenOptions;
 use std::borrow::Cow;
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+/// Errors that can occur when opening a package manager.
 #[derive(Debug, Error)]
 pub enum OpenError {
+    /// The storage directory was not found.
     #[error("Storage not found: `{0}`")]
     StorageNotFound(PathBuf),
 
+    /// The index file was not found.
     #[error("Index not found: `{0}`")]
     IndexNotFound(PathBuf),
 
+    /// A filesystem I/O error occurred.
     #[error("Filesystem: `{0}`")]
     IO(#[from] std::io::Error),
 
+    /// An error occurred in the index.
     #[error("Error in index: `{0}`")]
     Index(#[from] index::IndexError),
 
+    /// A lockfile error occurred.
     #[error("Lockfile error: `{0}`")]
     LockFile(#[from] lockfile::LockFileError),
 }
 
-pub fn check_exists_files(path: impl AsRef<Path>, options: &Options) -> Result<(), OpenError> {
+pub fn check_exists_files(path: impl AsRef<Path>, options: &OpenOptions) -> Result<(), OpenError> {
     #[cfg(feature = "logging")]
     log::debug!("Run check exists files");
 
@@ -50,44 +56,94 @@ pub fn check_exists_files(path: impl AsRef<Path>, options: &Options) -> Result<(
     Ok(())
 }
 
+/// A trait for types that can open a package manager at a given path.
+///
+/// This trait provides methods to initialize and access components of a package manager,
+/// such as the index and lockfile, with configurable options.
+///
+/// # Type Parameters
+/// * `P` - The type of package managed by the index, must implement [`Package`].
+///
+/// # Examples
+///
+/// ```no_run
+/// use fcpm::package_manager::open::{PackageManagerOpen, Options};
+/// use std::path::Path;
+///
+/// let pm = PackageManagerOpenTest::open("/path/to/pm")?;
+/// let index = pm.get_index();
+/// ```
 pub trait PackageManagerOpen<P>
 where
     Self: Sized,
     P: Package,
 {
+    /// Opens a package manager at the specified path with default options.
+    ///
+    /// # Parameters
+    /// * `path` - The path to the package manager directory.
+    ///
+    /// # Returns
+    /// Returns a `Result` containing the opened package manager or an [`Error`].
     fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
         #[cfg(feature = "logging")]
         log::debug!("Open package manager in path: {}", path.as_ref().display());
 
-        Self::open_with_options(path, Options::default())
+        Self::open_with_options(path, OpenOptions::default())
     }
 
-    fn open_with_options(path: impl AsRef<Path>, options: Options) -> Result<Self, Error>;
+    /// Opens a package manager at the specified path with custom options.
+    ///
+    /// # Parameters
+    /// * `path` - The path to the package manager directory.
+    /// * `options` - Configuration options for opening the package manager.
+    ///
+    /// # Returns
+    /// Returns a `Result` containing the opened package manager or an [`Error`].
+    fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error>;
 
+    /// Returns a reference to the lockfile.
+    /// The lockfile prevents concurrent access to the package manager.
+    ///
+    /// # Returns
+    /// A reference to the [`LockFile`].
     fn get_lockfile(&self) -> &LockFile;
 
+    /// Returns a reference to the index.
+    /// The index manages the packages in the package manager.
+    ///
+    /// # Returns
+    /// A reference to the [`Index<P>`].
     fn get_index(&self) -> &Index<P>;
 
-    fn get_options(&self) -> Cow<'_, Options>;
+    /// Returns the options used to open the package manager.
+    ///
+    /// # Returns
+    /// A [`Cow`] containing the [`Options`].
+    fn get_options(&self) -> Cow<'_, OpenOptions>;
 
+    /// Returns the path to the package manager directory.
+    ///
+    /// # Returns
+    /// A [`Cow`] containing the path as a [`Path`].
     fn path(&self) -> Cow<'_, Path>;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::package::tests::PackageTest;
+    use crate::example::package::PackageExample;
     use tempfile::{TempDir, tempdir};
 
     pub(crate) struct PackageManagerOpenTest {
         lockfile: LockFile,
-        index: Index<PackageTest>,
-        options: Options,
+        index: Index<PackageExample>,
+        options: OpenOptions,
         path: PathBuf,
     }
 
-    impl PackageManagerOpen<PackageTest> for PackageManagerOpenTest {
-        fn open_with_options(path: impl AsRef<Path>, options: Options) -> Result<Self, Error> {
+    impl PackageManagerOpen<PackageExample> for PackageManagerOpenTest {
+        fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error> {
             let path_buf = path.as_ref().to_path_buf();
 
             if !options.create_if_not_exists {
@@ -111,11 +167,11 @@ mod tests {
             &self.lockfile
         }
 
-        fn get_index(&self) -> &Index<PackageTest> {
+        fn get_index(&self) -> &Index<PackageExample> {
             &self.index
         }
 
-        fn get_options(&self) -> Cow<'_, Options> {
+        fn get_options(&self) -> Cow<'_, OpenOptions> {
             Cow::Borrowed(&self.options)
         }
 
@@ -144,7 +200,7 @@ mod tests {
     #[should_panic]
     fn open_without_create_on_open() {
         let tempdir = tempdir().unwrap();
-        let options = Options {
+        let options = OpenOptions {
             create_if_not_exists: false,
             ..Default::default()
         };
