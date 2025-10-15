@@ -19,6 +19,15 @@ pub enum LockFileError {
 ///
 /// The `LockFile` creates a lock file and uses file locking to ensure exclusive access.
 /// When the `LockFile` is dropped, the lock is released and the file is removed.
+///
+/// # Examples
+///
+/// ```no_run
+/// use fcpm::LockFile;
+///
+/// let lock = LockFile::new("my.lock")?;
+/// # Ok::<(), fcpm::package_manager::open::lockfile::LockFileError>(())
+/// ```
 #[derive(Debug)]
 pub struct LockFile {
     /// The locked file handle.
@@ -58,9 +67,10 @@ impl LockFile {
     /// # Examples
     ///
     /// ```no_run
-    /// use fcpm::package_manager::open::lockfile::LockFile;
+    /// use fcpm::LockFile;
     ///
     /// let lock = LockFile::new("my.lock")?;
+    /// # Ok::<(), fcpm::package_manager::open::lockfile::LockFileError>(())
     /// ```
     pub fn new(path: impl AsRef<Path>) -> Result<Self, LockFileError> {
         let path_buf = path.as_ref().to_path_buf();

@@ -19,13 +19,14 @@ use thiserror::Error;
 ///
 /// ```no_run
 /// use fcpm::Index;
-/// use fcpm::example::package::PackageExample as Package;
 /// use rusqlite::OpenFlags;
+/// # use fcpm::example::package::PackageExample as Package;
 ///
-/// let index: Index<Package> = Index::<Package>::open("index.sqlite", OpenFlags::default()).unwrap();
+/// let mut index: Index<Package> = Index::open("index.sqlite", OpenFlags::default())?;
 ///
 /// let some_package = Package::default();
-/// index.add_package(&some_package).unwrap();
+/// index.add_package(&some_package)?;
+/// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
 /// ```
 #[derive(Debug)]
 pub struct Index<P>
@@ -89,9 +90,10 @@ where
     /// ```no_run
     /// use fcpm::Index;
     /// use rusqlite::OpenFlags;
-    /// use fcpm::example::package::PackageExample as Package;
+    /// # use fcpm::example::package::PackageExample as Package;
     ///
-    /// let index: Index<Package> = Index::open("index.sqlite", OpenFlags::default()).unwrap();
+    /// let index: Index<Package> = Index::open("index.sqlite", OpenFlags::default())?;
+    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
     /// ```
     pub fn open(
         path: impl AsRef<Path>,
@@ -161,13 +163,14 @@ where
     ///
     /// ```no_run
     /// use fcpm::Index;
-    /// use fcpm::example::package::PackageExample as Package;
     /// use rusqlite::OpenFlags;
+    /// # use fcpm::example::package::PackageExample as Package;
     ///
-    /// let mut index = Index::open("index.sqlite", OpenFlags::default());
-    /// let package = PackageTest::default();
+    /// let mut index: Index<Package> = Index::open("index.sqlite", OpenFlags::default())?;
+    /// let package = Package::default();
     ///
     /// index.add_package(&package)?;
+    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
     /// ```
     pub fn add_package(&mut self, package: &impl Package) -> Result<(), IndexError> {
         #[cfg(feature = "logging")]
@@ -208,11 +211,15 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust
-    /// use fcpm::package_manager::open::index::Index;
+    /// ```no_run
+    /// # use fcpm::Index;
+    /// # use fcpm::example::package::PackageExample as Package;
+    /// # use rusqlite::OpenFlags;
+    /// #
+    /// let mut index: Index<Package> = Index::open("index.sqlite", OpenFlags::default())?;
     ///
-    /// let index = // ... open index
     /// index.delete_package("my-package")?;
+    /// #
     /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
     /// ```
     pub fn delete_package(&mut self, package_name: &str) -> Result<(), IndexError> {
@@ -248,12 +255,16 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust
-    /// use fcpm::package_manager::open::index::Index;
-    /// use fcpm::package::tests::PackageTest;
+    /// ```no_run
+    /// use fcpm::Index;
+    /// use rusqlite::OpenFlags;
+    /// use fcpm::Package;
+    /// # use fcpm::example::package::PackageExample;
     ///
-    /// let index = // ... open index
-    /// let package: PackageTest = index.get_package("my-package")?;
+    /// let index: Index<PackageExample> = Index::open("index.sqlite", OpenFlags::default())?;
+    /// let package = index.get_package("my-package")?;
+    ///
+    /// assert_eq!(package.name(), "package-name");
     /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
     /// ```
     pub fn get_package(&self, package_name: &str) -> Result<P, IndexError> {
@@ -298,12 +309,14 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust
-    /// use fcpm::package_manager::open::index::Index;
-    /// use fcpm::package::tests::PackageTest;
+    /// ```no_run
+    /// use fcpm::Index;
+    /// use rusqlite::OpenFlags;
+    /// # use fcpm::example::package::PackageExample as Package;
     ///
-    /// let index = // ... open index
-    /// let packages: Vec<PackageTest> = index.get_packages()?;
+    /// let index: Index<Package> = Index::open("index.sqlite", OpenFlags::default())?;
+    ///
+    /// let packages: Vec<Package> = index.get_packages()?;
     /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
     /// ```
     pub fn get_packages(&self) -> Result<Vec<P>, IndexError> {
@@ -353,11 +366,15 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust
-    /// use fcpm::package_manager::open::index::Index;
-    ///
-    /// let index = // ... open index
+    /// ```no_run
+    /// # use fcpm::Index;
+    /// # use fcpm::example::package::PackageExample as Package;
+    /// # use rusqlite::OpenFlags;
+    /// #
+    /// let index: Index<Package> = Index::open("index.sqlite", OpenFlags::default())?;
     /// let exists = index.have_package("my-package")?;
+    ///
+    /// assert!(exists);
     /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
     /// ```
     pub fn have_package(&self, package_name: &str) -> Result<bool, IndexError> {
@@ -410,7 +427,7 @@ mod tests {
 
     #[test_log::test]
     fn init() {
-        let (_tempdir, index) = create_test_index();
+        let (_tempdir, mut index) = create_test_index();
 
         index.init().unwrap();
     }

@@ -94,11 +94,10 @@ mod tests {
     #[test_log::test]
     #[cfg(feature = "http")]
     fn download_http() {
-        // TODO
-        //let downloader = Downloader::new("https://example.com");
-        //let text = downloader.download().unwrap();
+        let downloader = Downloader::new("https://example.com");
+        let text = downloader.download().unwrap();
 
-        //assert!(text.find("Example Domain").is_some());
+        assert!(text.find("Example Domain").is_some());
     }
 
     #[test_log::test]
