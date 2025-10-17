@@ -1,3 +1,4 @@
+pub mod downloader;
 pub mod open;
 pub mod repository;
 

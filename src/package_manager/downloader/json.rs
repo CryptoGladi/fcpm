@@ -1,0 +1,108 @@
+use super::{Downloader, DownloaderError, DownloaderType};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use std::marker::PhantomData;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DownloaderJson<'a, T>
+where
+    T: DeserializeOwned,
+{
+    url: &'a str,
+    phantom: PhantomData<T>,
+}
+
+impl<'a, T> DownloaderJson<'a, T>
+where
+    T: DeserializeOwned,
+{
+    pub fn new(url: &'a str) -> Self {
+        Self {
+            url,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, T> Downloader<'a> for DownloaderJson<'a, T>
+where
+    T: DeserializeOwned,
+{
+    type Object = T;
+
+    fn url(&self) -> &'a str {
+        self.url
+    }
+
+    fn download(&self) -> Result<T, DownloaderError> {
+        #[cfg(feature = "logging")]
+        log::debug!("Downloading json from: {}...", self.url());
+
+        let strategy = self.url_type()?;
+
+        let json = match strategy {
+            #[cfg(feature = "http")]
+            DownloaderType::Http => {
+                use reqwest::blocking::ClientBuilder;
+
+                let timeout = self.timeout();
+                let client = ClientBuilder::default().timeout(timeout).build()?;
+                client.get(self.url).send()?.text()?
+            }
+        };
+
+        Ok(serde_json::from_str(&json)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::example::package::PackageExampleWithMetadata;
+    use crate::package_manager::downloader::tests::TestHttpServer;
+
+    #[test_log::test]
+    #[cfg(feature = "http")]
+    fn download_http() {
+        let json = vec![PackageExampleWithMetadata::default()];
+        let json_str = serde_json::to_string(&json).unwrap();
+
+        let test_server = TestHttpServer::create(json_str);
+        let addr = test_server.addr();
+        let downloader = DownloaderJson::new(&addr);
+
+        let gotten_json: Vec<PackageExampleWithMetadata> = downloader.download().unwrap();
+
+        assert_eq!(gotten_json, json);
+    }
+
+    #[test_log::test]
+    #[cfg(feature = "http")]
+    fn download_http_with_empty_data() {
+        let json = ();
+        let json_str = serde_json::to_string(&json).unwrap();
+
+        let test_server = TestHttpServer::create(json_str);
+        let addr = test_server.addr();
+        let downloader = DownloaderJson::new(&addr);
+
+        let gotten_json: () = downloader.download().unwrap();
+
+        assert_eq!(gotten_json, json);
+    }
+
+    #[test_log::test]
+    #[cfg(feature = "http")]
+    #[should_panic]
+    fn download_http_with_invalid_address() {
+        let downloader = DownloaderJson::<()>::new("https://lol.kek.sa");
+        let _text = downloader.download().unwrap();
+    }
+
+    #[test_log::test]
+    #[cfg(feature = "http")]
+    #[should_panic]
+    fn download_http_with_empty_address() {
+        let downloader = DownloaderJson::<()>::new("");
+        let _text = downloader.download().unwrap();
+    }
+}

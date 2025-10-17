@@ -67,7 +67,7 @@ pub struct MetadataExample {
     pub stars: u32,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct PackageExampleWithMetadata {
     pub name: String,
     pub version: String,

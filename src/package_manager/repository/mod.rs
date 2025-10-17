@@ -1,4 +1,3 @@
-pub mod downloader;
 pub mod repository_manifest;
 
 use crate::{package::Package, package_manager::open::PackageManagerOpen};
@@ -13,13 +12,6 @@ pub enum RepositoryError {
 
     #[error("Error IO")]
     IO(#[from] std::io::Error),
-
-    #[error("Link: `{0}` is invalid or not support")]
-    LinkInvalid(String),
-
-    #[cfg(feature = "http")]
-    #[error("Error reqwest (http)")]
-    Reqwest(#[from] reqwest::Error),
 
     #[error("Json error")]
     Json(#[from] serde_json::Error),
