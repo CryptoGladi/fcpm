@@ -20,8 +20,9 @@ impl PackageManagerOpen<PackageExample> for PackageManagerOpenTest {
         }
 
         let lockfile =
-            LockFile::new(&path_buf.join(&options.lockfile_name)).map_err(OpenError::LockFile)?;
-        let index = Index::open(&path_buf.join(&options.index_name), options.clone().into())
+            LockFile::new(path_buf.join(&options.lockfile_name)).map_err(OpenError::LockFile)?;
+
+        let index = Index::open(path_buf.join(&options.index_name), options.clone().into())
             .map_err(OpenError::Index)?;
 
         Ok(Self {

@@ -1,0 +1,20 @@
+[package]
+name = "fcpm-test"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.48", features = ["net", "rt-multi-thread"] }
+axum = { version = "0.8", default-features = false, features = [
+    "http1",
+    "tokio",
+] }
+reqwest = { version = "0.12", features = [
+    "blocking",
+    "rustls-tls",
+], default-features = false }
+openport = "0.1.1"
+log = "0.4"
+
+[dev-dependencies]
+test-log.workspace = true

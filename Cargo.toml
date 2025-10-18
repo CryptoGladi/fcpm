@@ -3,19 +3,27 @@ name = "fcpm"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = ["fcpm-test"]
+resolver = "3"
+
+[workspace.dependencies]
+tempfile = "3"
+thiserror = "2"
+test-log = "0.2"
+
 [dependencies]
-log = { version = "0.4", optional = true }
+thiserror.workspace = true
 rusqlite = { version = "0.37", features = ["bundled"] }
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
-thiserror = "2"
 reqwest = { version = "0.12", features = [
     "blocking",
     "rustls-tls",
 ], default-features = false, optional = true }
-tempfile = "3"
+log = { version = "0.4", optional = true }
 
 [features]
 default = ["http"]
@@ -24,11 +32,6 @@ logging = ["dep:log"]
 http = ["dep:reqwest"]
 
 [dev-dependencies]
-axum = { version = "0.8", default-features = false, features = [
-    "http1",
-    "tokio",
-] }
-openport = "0.1.1"
-rand = "0.9.2"
-test-log = "0.2"
-tokio = { version = "1.48", features = ["net", "rt-multi-thread"] }
+tempfile.workspace = true
+test-log.workspace = true
+fcpm-test = { path = "fcpm-test" }

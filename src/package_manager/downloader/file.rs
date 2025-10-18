@@ -58,7 +58,7 @@ impl<'a> Downloader<'a> for DownloaderFile<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::package_manager::downloader::tests::TestHttpServer;
+    use fcpm_test::http_server::HttpServer;
     use tempfile::tempdir;
 
     #[test_log::test]
@@ -66,7 +66,7 @@ mod tests {
     fn download_http() {
         let tempdir = tempdir().unwrap();
         let path = tempdir.path().join("test_file.txt");
-        let test_server = TestHttpServer::create("SUPER OMEGA INFORMATION".to_string());
+        let test_server = HttpServer::new("SUPER OMEGA INFORMATION".to_string());
 
         let addr = test_server.addr();
         let downloader = DownloaderFile::new(&addr, &path);
@@ -83,7 +83,7 @@ mod tests {
     fn download_http_with_empty_data() {
         let tempdir = tempdir().unwrap();
         let path = tempdir.path().join("test_file.txt");
-        let test_server = TestHttpServer::create("".to_string());
+        let test_server = HttpServer::new("".to_string());
 
         let addr = test_server.addr();
         let downloader = DownloaderFile::new(&addr, &path);
@@ -96,7 +96,7 @@ mod tests {
     #[cfg(feature = "http")]
     #[should_panic]
     fn download_http_with_empty_path() {
-        let test_server = TestHttpServer::create("SUPER OMEGA INFORMATION".to_string());
+        let test_server = HttpServer::new("SUPER OMEGA INFORMATION".to_string());
 
         let addr = test_server.addr();
         let downloader = DownloaderFile::new(&addr, "");

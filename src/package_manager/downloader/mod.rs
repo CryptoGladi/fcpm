@@ -4,7 +4,6 @@ compile_error!("Not found method for downloading from network");
 pub mod file;
 pub mod json;
 
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use thiserror::Error;
 
@@ -67,158 +66,15 @@ pub trait Downloader<'a> {
     fn download(&self) -> Result<Self::Object, DownloaderError>;
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DownloaderFile<'a> {
-    url: &'a str,
+pub fn download<'a, T: Downloader<'a>>(downloader: T) -> Result<T::Object, DownloaderError> {
+    downloader.download()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::Rng;
-    use std::collections::HashSet;
-    use std::sync::{LazyLock, Mutex};
-
-    static USED_PORTS: LazyLock<UsedPorts> = LazyLock::new(|| UsedPorts::default());
-
-    #[derive(Debug, Default)]
-    pub(crate) struct UsedPorts {
-        ports: Mutex<HashSet<u16>>,
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub(crate) struct Port(u16);
-
-    impl Drop for Port {
-        fn drop(&mut self) {
-            USED_PORTS.remove(self.0);
-        }
-    }
-
-    impl std::fmt::Display for Port {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", self.0)
-        }
-    }
-
-    impl UsedPorts {
-        pub(crate) fn free(&self) -> Port {
-            #[cfg(feature = "logging")]
-            log::debug!("Get free port");
-
-            let mut ports = self.ports.lock().unwrap();
-
-            if ports.len() >= 9999 - 1000 {
-                panic!("Many used ports");
-            }
-
-            let mut rng = rand::rng();
-
-            let port = loop {
-                let port = rng.random_range(1000..=9999);
-
-                if !openport::is_free(port) || ports.contains(&port) {
-                    continue;
-                }
-
-                break port;
-            };
-
-            ports.insert(port);
-            Port(port)
-        }
-
-        fn used(&self) -> usize {
-            self.ports.lock().unwrap().len()
-        }
-
-        fn remove(&self, port: u16) {
-            #[cfg(feature = "logging")]
-            log::debug!("Delete port: {port}");
-
-            self.ports.lock().unwrap().remove(&port);
-        }
-    }
-
-    pub(crate) struct TestHttpServer {
-        port: Port,
-        handle: tokio::task::JoinHandle<()>,
-        runtime: tokio::runtime::Runtime,
-    }
-
-    impl TestHttpServer {
-        pub(crate) fn create(root_text: String) -> Self {
-            #[cfg(feature = "logging")]
-            log::debug!("Create test server");
-
-            use axum::Router;
-            use axum::routing::get;
-
-            let port = USED_PORTS.free();
-            let root_text_clone = root_text.clone();
-            let app = Router::new().route("/", get(async || -> String { root_text_clone }));
-
-            let runtime = tokio::runtime::Runtime::new().unwrap();
-
-            let addr = format!("127.0.0.1:{port}");
-            let handle = runtime.spawn(async move {
-                let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-                axum::serve(listener, app).await.unwrap();
-            });
-
-            Self {
-                port,
-                handle,
-                runtime,
-            }
-        }
-
-        #[allow(unused)]
-        pub(crate) fn runtime(&self) -> &tokio::runtime::Runtime {
-            &self.runtime
-        }
-
-        pub(crate) fn addr(&self) -> String {
-            format!("http://127.0.0.1:{}", self.port)
-        }
-    }
-
-    impl Drop for TestHttpServer {
-        fn drop(&mut self) {
-            self.handle.abort();
-        }
-    }
-
-    #[test_log::test]
-    fn impl_display_port() {
-        let port = Port(123);
-
-        assert_eq!(format!("{port}"), "123");
-    }
-
-    #[test_log::test]
-    fn get_free_port() {
-        let port1 = USED_PORTS.free();
-        let port2 = USED_PORTS.free();
-
-        assert_ne!(port1, port2);
-        assert!(USED_PORTS.used() >= 2);
-
-        drop(port1);
-        drop(port2);
-    }
-
-    #[test_log::test]
-    fn create_test_server() {
-        let test_server = TestHttpServer::create("Test is done!".to_string());
-
-        let test = reqwest::blocking::get(test_server.addr())
-            .unwrap()
-            .text()
-            .unwrap();
-
-        assert_eq!(test, "Test is done!");
-    }
+    use fcpm_test::http_server::HttpServer;
+    use serde::Deserialize;
 
     #[test_log::test]
     fn downloader_empty_string() {
@@ -242,5 +98,21 @@ mod tests {
             DownloaderType::get("http://example.com").unwrap(),
             DownloaderType::Http
         );
+    }
+
+    #[test_log::test]
+    #[cfg(feature = "http")]
+    fn simple_download() {
+        use crate::package_manager::downloader::json::DownloaderJson;
+
+        let http_server = HttpServer::new(r#"{"data": "w"}"#.to_string());
+
+        #[derive(Deserialize)]
+        struct T {
+            data: String,
+        }
+
+        let json: T = super::download(DownloaderJson::new(&http_server.addr())).unwrap();
+        assert_eq!(json.data, "w");
     }
 }
