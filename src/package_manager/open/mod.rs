@@ -87,7 +87,7 @@ where
     /// * `path` - The path to the package manager directory.
     ///
     /// # Returns
-    /// Returns a `Result` containing the opened package manager or an [`Error`].
+    /// Returns a `Result` containing the opened package manager or an [`enum@Error`].
     fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
         #[cfg(feature = "logging")]
         log::debug!("Open package manager in path: {}", path.as_ref().display());
@@ -102,7 +102,7 @@ where
     /// * `options` - Configuration options for opening the package manager.
     ///
     /// # Returns
-    /// Returns a `Result` containing the opened package manager or an [`Error`].
+    /// Returns a `Result` containing the opened package manager or an [`enum@Error`].
     fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error>;
 
     /// Returns a reference to the lockfile.
@@ -122,7 +122,7 @@ where
     /// Returns the options used to open the package manager.
     ///
     /// # Returns
-    /// A [`Cow`] containing the [`Options`].
+    /// A [`Cow`] containing the [`OpenOptions`].
     fn get_options(&self) -> Cow<'_, OpenOptions>;
 
     /// Returns the path to the package manager directory.
@@ -131,6 +131,3 @@ where
     /// A [`Cow`] containing the path as a [`Path`].
     fn path(&self) -> Cow<'_, Path>;
 }
-
-#[cfg(test)]
-mod tests {}

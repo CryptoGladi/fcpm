@@ -35,3 +35,7 @@ http = ["dep:reqwest"]
 tempfile.workspace = true
 test-log.workspace = true
 fcpm-test = { path = "fcpm-test" }
+
+[package.metadata.docs.rs]
+all-features = true
+rustc-args = ["--cfg", "docsrs"]

@@ -16,6 +16,7 @@ pub enum DownloaderError {
     LinkInvalid(String),
 
     #[cfg(feature = "http")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http")))]
     #[error("Error reqwest (http)")]
     Reqwest(#[from] reqwest::Error),
 
@@ -26,6 +27,7 @@ pub enum DownloaderError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DownloaderType {
     #[cfg(feature = "http")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "http")))]
     Http,
 }
 
