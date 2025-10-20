@@ -75,7 +75,7 @@ pub fn download<'a, T: Downloader<'a>>(downloader: T) -> Result<T::Object, Downl
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fcpm_test::http_server::HttpServer;
+    use fcpm_test::http_server::HttpServerBuilder;
     use serde::Deserialize;
 
     #[test_log::test]
@@ -107,7 +107,10 @@ mod tests {
     fn simple_download() {
         use crate::package_manager::downloader::json::DownloaderJson;
 
-        let http_server = HttpServer::new(r#"{"data": "w"}"#.to_string());
+        let http_server = HttpServerBuilder::default()
+            .root_text(r#"{"data": "w"}"#)
+            .build()
+            .unwrap();
 
         #[derive(Deserialize)]
         struct T {

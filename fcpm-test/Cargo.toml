@@ -9,12 +9,13 @@ axum = { version = "0.8", default-features = false, features = [
     "http1",
     "tokio",
 ] }
+openport = "0.1.1"
+log = "0.4"
+thiserror.workspace = true
+
+[dev-dependencies]
+test-log.workspace = true
 reqwest = { version = "0.12", features = [
     "blocking",
     "rustls-tls",
 ], default-features = false }
-openport = "0.1.1"
-log = "0.4"
-
-[dev-dependencies]
-test-log.workspace = true

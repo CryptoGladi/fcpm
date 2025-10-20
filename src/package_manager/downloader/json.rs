@@ -58,7 +58,7 @@ where
 mod tests {
     use super::*;
     use crate::example::package::PackageExampleWithMetadata;
-    use fcpm_test::http_server::HttpServer;
+    use fcpm_test::http_server::HttpServerBuilder;
 
     #[test_log::test]
     #[cfg(feature = "http")]
@@ -66,7 +66,11 @@ mod tests {
         let json = vec![PackageExampleWithMetadata::default()];
         let json_str = serde_json::to_string(&json).unwrap();
 
-        let test_server = HttpServer::new(json_str);
+        let test_server = HttpServerBuilder::default()
+            .root_text(&json_str)
+            .build()
+            .unwrap();
+
         let addr = test_server.addr();
         let downloader = DownloaderJson::new(&addr);
 
@@ -81,7 +85,11 @@ mod tests {
         let json = ();
         let json_str = serde_json::to_string(&json).unwrap();
 
-        let test_server = HttpServer::new(json_str);
+        let test_server = HttpServerBuilder::default()
+            .root_text(&json_str)
+            .build()
+            .unwrap();
+
         let addr = test_server.addr();
         let downloader = DownloaderJson::new(&addr);
 
