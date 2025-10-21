@@ -72,8 +72,6 @@ pub trait Downloader<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fcpm_test::http_server::HttpServerBuilder;
-    use serde::Deserialize;
 
     #[test_log::test]
     fn downloader_empty_string() {
