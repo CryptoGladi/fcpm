@@ -49,7 +49,7 @@ impl<'a> Downloader<'a> for DownloaderFile<'a> {
 
                 std::io::copy(&mut response, &mut file)?;
             }
-        };
+        }
 
         Ok(())
     }

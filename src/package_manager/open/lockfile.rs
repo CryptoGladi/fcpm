@@ -87,7 +87,7 @@ impl LockFile {
 
         Ok(Self {
             file,
-            path: path_buf.to_path_buf(),
+            path: path_buf.clone(),
         })
     }
 
@@ -120,7 +120,7 @@ impl Drop for LockFile {
     fn drop(&mut self) {
         if let Err(unlock_error) = self.unlock() {
             #[cfg(feature = "logging")]
-            log::debug!("Error unlock lockfile in drop: `{}`", unlock_error);
+            log::debug!("Error unlock lockfile in drop: `{unlock_error}`");
         }
     }
 }

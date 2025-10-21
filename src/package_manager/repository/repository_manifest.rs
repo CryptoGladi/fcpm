@@ -29,6 +29,7 @@ where
         self.packages.push(package_manifest);
     }
 
+    #[must_use]
     pub fn get_package(&self, package_name: &str) -> Option<&PackageManifest<P>> {
         #[cfg(feature = "logging")]
         log::debug!("Get package from name: {package_name}");

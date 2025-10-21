@@ -40,7 +40,7 @@ impl DownloaderType {
 
         match split.next() {
             #[cfg(feature = "http")]
-            Some("http") | Some("https") => Some(Self::Http),
+            Some("http" | "https") => Some(Self::Http),
             _ => None,
         }
     }
@@ -59,17 +59,14 @@ pub trait Downloader<'a> {
     }
 
     fn timeout(&self) -> Duration {
-        match cfg!(test) {
-            true => Duration::from_secs(1),
-            false => Duration::from_secs(10),
+        if cfg!(test) {
+            Duration::from_secs(1)
+        } else {
+            Duration::from_secs(10)
         }
     }
 
     fn download(&self) -> Result<Self::Object, DownloaderError>;
-}
-
-pub fn download<'a, T: Downloader<'a>>(downloader: T) -> Result<T::Object, DownloaderError> {
-    downloader.download()
 }
 
 #[cfg(test)]
@@ -100,24 +97,5 @@ mod tests {
             DownloaderType::get("http://example.com").unwrap(),
             DownloaderType::Http
         );
-    }
-
-    #[test_log::test]
-    #[cfg(feature = "http")]
-    fn simple_download() {
-        use crate::package_manager::downloader::json::DownloaderJson;
-
-        let http_server = HttpServerBuilder::default()
-            .root_text(r#"{"data": "w"}"#)
-            .build()
-            .unwrap();
-
-        #[derive(Deserialize)]
-        struct T {
-            data: String,
-        }
-
-        let json: T = super::download(DownloaderJson::new(&http_server.addr())).unwrap();
-        assert_eq!(json.data, "w");
     }
 }

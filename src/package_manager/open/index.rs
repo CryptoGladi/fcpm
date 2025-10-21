@@ -6,10 +6,10 @@ use std::{
 };
 use thiserror::Error;
 
-/// A SQLite-based index for managing packages.
+/// A `SQLite`-based index for managing packages.
 ///
 /// The `Index` struct provides an interface to store, retrieve, and manage packages
-/// in a SQLite database. It supports operations like adding, deleting, and querying packages.
+/// in a `SQLite` database. It supports operations like adding, deleting, and querying packages.
 ///
 /// # Type Parameters
 ///
@@ -33,10 +33,10 @@ pub struct Index<P>
 where
     P: Package,
 {
-    /// The path to the SQLite database file.
+    /// The path to the `SQLite` database file.
     path: PathBuf,
 
-    /// The SQLite database connection.
+    /// The `SQLite` database connection.
     db: rusqlite::Connection,
 
     phantom: PhantomData<P>,
@@ -56,7 +56,7 @@ impl<P> Eq for Index<P> where P: Package {}
 /// Errors that can occur when interacting with the index.
 #[derive(Debug, Error)]
 pub enum IndexError {
-    /// A SQLite database error occurred.
+    /// A `SQLite` database error occurred.
     #[error("SQLite error: `{0}`")]
     SQLite(#[from] rusqlite::Error),
 
@@ -73,12 +73,12 @@ impl<P> Index<P>
 where
     P: Package,
 {
-    /// Opens an index at the specified path with the given SQLite open flags.
-    /// This method initializes the SQLite database and creates the necessary tables if they don't exist.
+    /// Opens an index at the specified path with the given `SQLite` open flags.
+    /// This method initializes the `SQLite` database and creates the necessary tables if they don't exist.
     ///
     /// # Parameters
     ///
-    /// * `path` - The path to the SQLite database file.
+    /// * `path` - The path to the `SQLite` database file.
     /// * `open_flags` - The flags to use when opening the database.
     ///
     /// # Returns

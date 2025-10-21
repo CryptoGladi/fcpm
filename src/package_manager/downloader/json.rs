@@ -15,7 +15,8 @@ impl<'a, T> DownloaderJson<'a, T>
 where
     T: DeserializeOwned,
 {
-    pub fn new(url: &'a str) -> Self {
+    #[must_use]
+    pub const fn new(url: &'a str) -> Self {
         Self {
             url,
             phantom: PhantomData,

@@ -1,11 +1,12 @@
 use std::{
     collections::HashSet,
-    ops::Range,
-    sync::{LazyLock, Mutex, MutexGuard, PoisonError},
+    ops::{Range, RangeBounds},
+    sync::{LazyLock, LockResult, Mutex, MutexGuard},
 };
+use thiserror::Error;
 
 pub static USED_PORTS: LazyLock<UsedPorts> = LazyLock::new(UsedPorts::default);
-const RANGE_PORTS: Range<u16> = 1000..9999;
+pub(crate) const RANGE_PORTS: Range<u16> = 1000..(9999 + 1);
 
 #[derive(Debug)]
 pub struct Port<'a> {
@@ -14,16 +15,17 @@ pub struct Port<'a> {
 }
 
 impl<'a> Port<'a> {
-    pub fn new(port: u16, source: &'a UsedPorts) -> Self {
+    pub const fn new(port: u16, source: &'a UsedPorts) -> Self {
         Self { port, source }
     }
 
-    pub fn port(&self) -> u16 {
+    #[must_use]
+    pub const fn port(&self) -> u16 {
         self.port
     }
 }
 
-impl<'a> Drop for Port<'a> {
+impl Drop for Port<'_> {
     fn drop(&mut self) {
         self.source
             .remove(self.port)
@@ -31,21 +33,57 @@ impl<'a> Drop for Port<'a> {
     }
 }
 
-impl<'a> PartialEq for Port<'a> {
+impl PartialEq for Port<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.port == other.port
     }
 }
 
-impl<'a> Eq for Port<'a> {}
+impl Eq for Port<'_> {}
 
-impl<'a> PartialOrd for Port<'a> {
+impl PartialEq<u16> for Port<'_> {
+    fn eq(&self, port: &u16) -> bool {
+        self.port == *port
+    }
+}
+
+impl PartialEq<u16> for &Port<'_> {
+    fn eq(&self, port: &u16) -> bool {
+        self.port == *port
+    }
+}
+
+impl PartialEq<Port<'_>> for u16 {
+    fn eq(&self, other: &Port<'_>) -> bool {
+        *self == other.port()
+    }
+}
+
+impl PartialEq<&Port<'_>> for u16 {
+    fn eq(&self, other: &&Port<'_>) -> bool {
+        *self == other.port()
+    }
+}
+
+impl PartialOrd for Port<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.port.cmp(&other.port))
     }
 }
 
-impl<'a> std::fmt::Display for Port<'a> {
+impl PartialOrd<u16> for Port<'_> {
+    fn partial_cmp(&self, other_port: &u16) -> Option<std::cmp::Ordering> {
+        Some(self.port.cmp(other_port))
+    }
+}
+
+impl PartialOrd<Port<'_>> for u16 {
+    fn partial_cmp(&self, port: &Port<'_>) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(&port.port))
+    }
+}
+
+impl std::fmt::Display for Port<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.port)
     }
@@ -57,7 +95,16 @@ impl<'a> From<Port<'a>> for u16 {
     }
 }
 
-pub(crate) type UsedPortsResult<'a, T> = Result<T, PoisonError<MutexGuard<'a, HashSet<u16>>>>;
+#[derive(Debug, Error)]
+pub enum UsedPortsError {
+    #[error("Mutex is poison")]
+    Poison,
+
+    #[error("Port not found")]
+    PortNotFound,
+}
+
+pub(crate) type UsedPortsResult<T> = Result<T, UsedPortsError>;
 
 #[derive(Debug, Default)]
 pub struct UsedPorts {
@@ -65,12 +112,23 @@ pub struct UsedPorts {
 }
 
 impl<'a> UsedPorts {
-    pub fn free(&'a self) -> UsedPortsResult<'a, Port<'a>> {
-        log::debug!("Get free port");
+    pub fn free(&'a self) -> UsedPortsResult<Port<'a>> {
+        self.free_by_range(RANGE_PORTS)
+    }
 
-        let mut ports = self.ports.lock()?;
+    pub fn free_by_range<R>(&'a self, range: R) -> UsedPortsResult<Port<'a>>
+    where
+        R: RangeBounds<u16> + IntoIterator<Item = u16>,
+    {
+        log::debug!(
+            "Get free port by range: {:?}..{:?}",
+            range.start_bound(),
+            range.end_bound()
+        );
 
-        for port in RANGE_PORTS {
+        let mut ports = self.ports.lock().map_err(|_| UsedPortsError::Poison)?;
+
+        for port in range {
             if ports.contains(&port) || !openport::is_free(port) {
                 continue;
             }
@@ -79,22 +137,33 @@ impl<'a> UsedPorts {
             return Ok(Port::new(port, self));
         }
 
-        panic!("Not found free port");
+        Err(UsedPortsError::PortNotFound)
     }
 
-    pub fn used(&self) -> UsedPortsResult<'_, usize> {
-        Ok(self.ports.lock()?.len())
+    pub fn used(&self) -> UsedPortsResult<usize> {
+        Ok(self.ports.lock().map_err(|_| UsedPortsError::Poison)?.len())
     }
 
-    pub fn remove(&self, port: u16) -> UsedPortsResult<'_, ()> {
+    pub fn remove(&self, port: u16) -> UsedPortsResult<()> {
         log::debug!("Delete port: {port}");
 
-        self.ports.lock()?.remove(&port);
+        self.ports
+            .lock()
+            .map_err(|_| UsedPortsError::Poison)?
+            .remove(&port);
         Ok(())
     }
 
-    pub fn insert(&self, port: u16) -> UsedPortsResult<'_, bool> {
-        Ok(self.ports.lock()?.insert(port))
+    pub fn insert(&self, port: u16) -> UsedPortsResult<bool> {
+        Ok(self
+            .ports
+            .lock()
+            .map_err(|_| UsedPortsError::Poison)?
+            .insert(port))
+    }
+
+    pub fn lock(&'a self) -> LockResult<MutexGuard<'a, HashSet<u16>>> {
+        self.ports.lock()
     }
 }
 
@@ -117,11 +186,49 @@ mod tests {
     }
 
     #[test_log::test]
+    fn partial_eq_for_u16() {
+        let used_port = UsedPorts::default();
+
+        let port1 = used_port.free_by_range(1000..3000).unwrap();
+        let port2 = 1;
+
+        assert_ne!(port1, port2);
+        assert_ne!(port2, port1);
+        assert_eq!(port1, port1.port());
+        assert_eq!(port1.port(), port1);
+
+        let port1_ref = &port1;
+        assert_ne!(port1_ref, port2);
+        assert_ne!(port2, port1_ref);
+        assert_eq!(port1_ref, port1_ref.port());
+        assert_eq!(port1_ref.port(), port1_ref);
+    }
+
+    #[test_log::test]
     fn partial_ord() {
         let used_port = UsedPorts::default();
 
         let port1 = Port::new(1000, &used_port);
         let port2 = Port::new(1001, &used_port);
+
+        assert!(port1 < port2);
+        assert!(port1 <= port2);
+
+        assert!(port2 > port1);
+        assert!(port2 >= port1);
+
+        assert!(port1 >= port1);
+        assert!(port2 >= port2);
+        assert!(port1 <= port1);
+        assert!(port2 <= port2);
+    }
+
+    #[test_log::test]
+    fn partial_ord_for_u16() {
+        let used_port = UsedPorts::default();
+
+        let port1 = Port::new(1000, &used_port);
+        let port2 = 1500;
 
         assert!(port1 < port2);
         assert!(port1 <= port2);
@@ -159,6 +266,14 @@ mod tests {
     }
 
     #[test_log::test]
+    fn free_by_range() {
+        let used_port = UsedPorts::default();
+        let port = used_port.free_by_range(9900..=9999).unwrap();
+
+        assert!(port >= 9900);
+    }
+
+    #[test_log::test]
     fn clone() {
         let used_port = UsedPorts::default();
         let port = used_port.free().unwrap();
@@ -184,7 +299,7 @@ mod tests {
     fn get_port() {
         let port = Port::new(5462, &USED_PORTS);
 
-        assert_eq!(port.port(), 5462);
+        assert_eq!(port, 5462);
     }
 
     #[test_log::test]

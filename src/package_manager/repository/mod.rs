@@ -29,7 +29,7 @@ pub struct Repositories(Vec<Repository>);
 impl Repositories {
     pub fn add(&mut self, repository: Repository) -> Result<(), RepositoryError> {
         #[cfg(feature = "logging")]
-        log::debug!("Add to repositories: {:?}", repository);
+        log::debug!("Add to repositories: {repository:?}");
 
         if self.get(&repository.name).is_some() {
             return Err(RepositoryError::AlreadyHave);
@@ -39,6 +39,7 @@ impl Repositories {
         Ok(())
     }
 
+    #[must_use]
     pub fn get(&self, repository_name: &str) -> Option<&Repository> {
         #[cfg(feature = "logging")]
         log::debug!("Get repository by name: {repository_name}");
