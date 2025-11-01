@@ -1,4 +1,4 @@
-use crate::package_manager::{open::OpenError, repository::RepositoryError};
+use crate::client::{core::OpenError, repository::RepositoryError};
 use thiserror::Error;
 
 #[derive(Debug, Error)]

@@ -12,15 +12,15 @@
 #![allow(clippy::missing_errors_doc)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+pub mod client;
 pub mod error;
 pub mod example;
 pub mod package;
-pub mod package_manager;
 pub mod server;
 
+pub use client::PackageManager;
+pub use client::core::PackageManagerCore;
+pub use client::core::index::Index;
+pub use client::core::lockfile::LockFile;
+pub use client::core::options::OpenOptions;
 pub use package::Package;
-pub use package_manager::PackageManager;
-pub use package_manager::open::PackageManagerOpen;
-pub use package_manager::open::index::Index;
-pub use package_manager::open::lockfile::LockFile;
-pub use package_manager::open::options::OpenOptions;

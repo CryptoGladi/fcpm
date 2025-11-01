@@ -1,12 +1,12 @@
+pub mod core;
 pub mod downloader;
-pub mod open;
 pub mod repository;
 
+use crate::client::core::PackageManagerCore;
+use crate::client::repository::PackageManagerRepository;
 use crate::package::Package;
-use crate::package_manager::open::PackageManagerOpen;
-use crate::package_manager::repository::PackageManagerRepository;
 
-pub trait PackageManager<P>: PackageManagerOpen<P> + PackageManagerRepository<P>
+pub trait PackageManager<P>: PackageManagerCore + PackageManagerRepository
 where
     Self: Sized,
     P: Package,
@@ -14,5 +14,5 @@ where
     //fn install_package_from_repository(&mut self, repository: Repository, name_package: &str);
     //fn install_package_from_manifest(&mut self, path: impl AsRef<Path>);
     //fn uninstall_package(&mut self, name_package: &str);
-    //fn upgrade_packages(&mut self);
+    //fn upgrade_packages(&mut self)
 }

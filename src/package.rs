@@ -2,6 +2,11 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::borrow::Cow;
 
+pub struct Dependencies {
+    name: String,
+    version: String,
+}
+
 pub trait Package {
     type Metadata: Serialize + DeserializeOwned + Clone;
 
@@ -15,10 +20,13 @@ pub trait Package {
 
     fn name(&self) -> Cow<'_, str>;
 
-    // TODO semver?
     fn version(&self) -> Cow<'_, str>;
 
     fn repository_name(&self) -> Cow<'_, str>;
+
+    fn conflicts(&self) -> Vec<String>;
+
+    fn dependencies(&self) -> Vec<String>;
 
     fn hashsum(&self) -> Cow<'_, str>;
 

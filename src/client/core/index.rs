@@ -26,7 +26,7 @@ use thiserror::Error;
 ///
 /// let some_package = Package::default();
 /// index.add_package(&some_package)?;
-/// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+/// # Ok::<(), fcpm::client::core::index::IndexError>(())
 /// ```
 #[derive(Debug)]
 pub struct Index<P>
@@ -93,7 +93,7 @@ where
     /// # use fcpm::example::package::PackageExample as Package;
     ///
     /// let index: Index<Package> = Index::open("index.sqlite", OpenFlags::default())?;
-    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// # Ok::<(), fcpm::client::core::index::IndexError>(())
     /// ```
     pub fn open(
         path: impl AsRef<Path>,
@@ -170,7 +170,7 @@ where
     /// let package = Package::default();
     ///
     /// index.add_package(&package)?;
-    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// # Ok::<(), fcpm::client::core::index::IndexError>(())
     /// ```
     pub fn add_package(&mut self, package: &impl Package) -> Result<(), IndexError> {
         #[cfg(feature = "logging")]
@@ -220,7 +220,7 @@ where
     ///
     /// index.delete_package("my-package")?;
     /// #
-    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// # Ok::<(), fcpm::client::core::index::IndexError>(())
     /// ```
     pub fn delete_package(&mut self, package_name: &str) -> Result<(), IndexError> {
         #[cfg(feature = "logging")]
@@ -265,7 +265,7 @@ where
     /// let package = index.get_package("my-package")?;
     ///
     /// assert_eq!(package.name(), "package-name");
-    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// # Ok::<(), fcpm::client::core::index::IndexError>(())
     /// ```
     pub fn get_package(&self, package_name: &str) -> Result<P, IndexError> {
         #[cfg(feature = "logging")]
@@ -317,7 +317,7 @@ where
     /// let index: Index<Package> = Index::open("index.sqlite", OpenFlags::default())?;
     ///
     /// let packages: Vec<Package> = index.get_packages()?;
-    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// # Ok::<(), fcpm::client::core::index::IndexError>(())
     /// ```
     pub fn get_packages(&self) -> Result<Vec<P>, IndexError> {
         #[cfg(feature = "logging")]
@@ -375,7 +375,7 @@ where
     /// let exists = index.have_package("my-package")?;
     ///
     /// assert!(exists);
-    /// # Ok::<(), fcpm::package_manager::open::index::IndexError>(())
+    /// # Ok::<(), fcpm::client::core::index::IndexError>(())
     /// ```
     pub fn have_package(&self, package_name: &str) -> Result<bool, IndexError> {
         #[cfg(feature = "logging")]

@@ -1,6 +1,6 @@
+use crate::client::core::{OpenError, check_exists_files};
 use crate::error::Error;
-use crate::package_manager::open::{OpenError, check_exists_files};
-use crate::{Index, LockFile, OpenOptions, PackageManagerOpen, example::package::PackageExample};
+use crate::{Index, LockFile, OpenOptions, PackageManagerCore, example::package::PackageExample};
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
@@ -11,7 +11,9 @@ pub struct PackageManagerOpenTest {
     path: PathBuf,
 }
 
-impl PackageManagerOpen<PackageExample> for PackageManagerOpenTest {
+impl PackageManagerCore for PackageManagerOpenTest {
+    type Package = PackageExample;
+
     fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error> {
         let path_buf = path.as_ref().to_path_buf();
 

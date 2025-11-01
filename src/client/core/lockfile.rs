@@ -26,7 +26,7 @@ pub enum LockFileError {
 /// use fcpm::LockFile;
 ///
 /// let lock = LockFile::new("my.lock")?;
-/// # Ok::<(), fcpm::package_manager::open::lockfile::LockFileError>(())
+/// # Ok::<(), fcpm::client::core::lockfile::LockFileError>(())
 /// ```
 #[derive(Debug)]
 pub struct LockFile {
@@ -70,7 +70,7 @@ impl LockFile {
     /// use fcpm::LockFile;
     ///
     /// let lock = LockFile::new("my.lock")?;
-    /// # Ok::<(), fcpm::package_manager::open::lockfile::LockFileError>(())
+    /// # Ok::<(), fcpm::client::core::lockfile::LockFileError>(())
     /// ```
     pub fn new(path: impl AsRef<Path>) -> Result<Self, LockFileError> {
         let path_buf = path.as_ref().to_path_buf();

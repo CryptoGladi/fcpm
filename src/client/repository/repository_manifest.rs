@@ -1,6 +1,6 @@
 pub mod package_manifest;
 
-use crate::{package::Package, package_manager::repository::RepositoryError};
+use crate::{client::repository::RepositoryError, package::Package};
 use package_manifest::PackageManifest;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{fmt::Debug, fs::OpenOptions, io::Write, path::Path};

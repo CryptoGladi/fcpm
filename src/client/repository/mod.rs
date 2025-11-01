@@ -1,6 +1,6 @@
 pub mod repository_manifest;
 
-use crate::{package::Package, package_manager::open::PackageManagerOpen};
+use crate::client::core::PackageManagerCore;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, path::PathBuf};
 use thiserror::Error;
@@ -58,30 +58,19 @@ impl std::ops::Index<&str> for Repositories {
     }
 }
 
-fn get_path<P>(package_manager: &impl PackageManagerOpen<P>) -> PathBuf
-where
-    P: Package,
-{
+fn get_path(package_manager: &impl PackageManagerCore) -> PathBuf {
     let options = package_manager.get_options();
     options.path_repository(package_manager.path())
 }
 
-pub trait PackageManagerRepository<P>: PackageManagerOpen<P>
+pub trait PackageManagerRepository: PackageManagerCore
 where
     Self: Sized,
-    P: Package,
 {
-    fn update_repositories(&mut self) -> Result<(), RepositoryError> {
-        Ok(())
-    }
-
+    fn update_repositories(&mut self) -> Result<(), RepositoryError>;
     fn add_repository(&mut self, repository: Repository) -> Result<(), RepositoryError>;
     fn remove_repository(&mut self, name_repository: &str) -> Result<(), RepositoryError>;
-    fn get_repositories(&self) -> Result<Cow<'_, Vec<Repository>>, RepositoryError> {
-        let _path = get_path(self);
-
-        todo!()
-    }
+    fn get_repositories(&self) -> Result<Cow<'_, Vec<Repository>>, RepositoryError>;
 }
 
 #[cfg(test)]

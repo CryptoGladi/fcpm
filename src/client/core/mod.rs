@@ -5,7 +5,6 @@ pub mod lockfile;
 pub mod options;
 
 use crate::error::Error;
-use crate::package::Package;
 use index::Index;
 use lockfile::LockFile;
 use options::OpenOptions;
@@ -70,17 +69,18 @@ pub fn check_exists_files(path: impl AsRef<Path>, options: &OpenOptions) -> Resu
 /// ```no_run
 /// use std::path::Path;
 /// use crate::fcpm::PackageManagerOpen;
-/// # use fcpm::example::package_manager::PackageManagerOpenTest as PackageManager;
+/// # use fcpm::example::client::PackageManagerOpenTest as PackageManager;
 ///
 /// let pm = PackageManager::open("/path/to/pm")?;
 /// let index = pm.get_index();
 /// # Ok::<(), fcpm::error::Error>(())
 /// ```
-pub trait PackageManagerOpen<P>
+pub trait PackageManagerCore
 where
     Self: Sized,
-    P: Package,
 {
+    type Package: crate::package::Package;
+
     /// Opens a package manager at the specified path with default options.
     ///
     /// # Parameters
@@ -117,7 +117,7 @@ where
     ///
     /// # Returns
     /// A reference to the [`Index<P>`].
-    fn get_index(&self) -> &Index<P>;
+    fn get_index(&self) -> &Index<Self::Package>;
 
     /// Returns the options used to open the package manager.
     ///
