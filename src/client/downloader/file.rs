@@ -68,7 +68,7 @@ mod tests {
         let path = tempdir.path().join("test_file.txt");
 
         let test_server = HttpServerBuilder::default()
-            .root_text("SUPER OMEGA INFORMATION")
+            .root_text("SUPER OMEGA INFORMATION".to_string())
             .build()
             .unwrap();
 
@@ -87,7 +87,10 @@ mod tests {
     fn download_http_with_empty_data() {
         let tempdir = tempdir().unwrap();
         let path = tempdir.path().join("test_file.txt");
-        let test_server = HttpServerBuilder::default().root_text("").build().unwrap();
+        let test_server = HttpServerBuilder::default()
+            .root_text("".to_string())
+            .build()
+            .unwrap();
 
         let addr = test_server.addr();
         let downloader = DownloaderFile::new(&addr, &path);
@@ -101,7 +104,7 @@ mod tests {
     #[should_panic]
     fn download_http_with_empty_path() {
         let test_server = HttpServerBuilder::default()
-            .root_text("SUPER OMEGA INFORMATION")
+            .root_text("SUPER OMEGA INFORMATION".to_string())
             .build()
             .unwrap();
 

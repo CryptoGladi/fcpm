@@ -18,38 +18,18 @@ pub enum HttpServerError {
     PortIsBusy(u16),
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct HttpServerBuilder<'a> {
-    root_text: String,
+    root_text: Option<String>,
     strict_port: Option<u16>,
-    range_port: Range<u16>,
-    used_ports: &'a UsedPorts,
-}
-
-impl Default for HttpServerBuilder<'_> {
-    fn default() -> Self {
-        Self {
-            root_text: ROOT_TEXT_DEFAULT.to_string(),
-            strict_port: None,
-            range_port: RANGE_PORTS,
-            used_ports: &USED_PORTS,
-        }
-    }
+    range_port: Option<Range<u16>>,
+    used_ports: Option<&'a UsedPorts>,
 }
 
 impl<'a> HttpServerBuilder<'a> {
-    pub const fn new(used_ports: &'a UsedPorts, range_port: Range<u16>) -> Self {
-        Self {
-            root_text: String::new(),
-            strict_port: None,
-            range_port,
-            used_ports,
-        }
-    }
-
     #[must_use]
-    pub fn root_text(mut self, root_text: &str) -> Self {
-        root_text.clone_into(&mut self.root_text);
+    pub fn root_text(mut self, root_text: String) -> Self {
+        self.root_text = Some(root_text);
 
         self
     }
@@ -63,14 +43,14 @@ impl<'a> HttpServerBuilder<'a> {
 
     #[must_use]
     pub const fn range_port(mut self, range_port: Range<u16>) -> Self {
-        self.range_port = range_port;
+        self.range_port = Some(range_port);
 
         self
     }
 
     #[must_use]
     pub const fn used_ports(mut self, used_ports: &'a UsedPorts) -> Self {
-        self.used_ports = used_ports;
+        self.used_ports = Some(used_ports);
 
         self
     }
@@ -78,18 +58,20 @@ impl<'a> HttpServerBuilder<'a> {
     pub fn build(self) -> Result<HttpServer<'a>, HttpServerError> {
         log::debug!("Create http server");
 
-        let app = Router::new().route("/", get(async || self.root_text));
+        let root_text = self.root_text.unwrap_or(ROOT_TEXT_DEFAULT.to_string());
+        let range_port = self.range_port.unwrap_or(RANGE_PORTS);
+        let used_ports = self.used_ports.unwrap_or(&USED_PORTS);
+
+        let app = Router::new().route("/", get(async || root_text));
 
         let runtime = tokio::runtime::Runtime::new()?;
 
         let port = match self.strict_port {
-            None => self
-                .used_ports
-                .free_by_range(self.range_port)
+            None => used_ports
+                .free_by_range(range_port)
                 .map_err(|_| HttpServerError::Poison)?,
             Some(port) => {
-                let already_have = !self
-                    .used_ports
+                let already_have = !used_ports
                     .insert(port)
                     .map_err(|_| HttpServerError::Poison)?;
 
@@ -97,7 +79,7 @@ impl<'a> HttpServerBuilder<'a> {
                     return Err(HttpServerError::PortIsBusy(port));
                 }
 
-                Port::new(port, self.used_ports)
+                Port::new(port, used_ports)
             }
         };
 
@@ -151,8 +133,8 @@ mod tests {
 
     #[test_log::test]
     fn create() {
-        let test_server = HttpServerBuilder::new(&USED_PORTS, RANGE_PORTS)
-            .root_text("Test is done!")
+        let test_server = HttpServerBuilder::default()
+            .root_text("Test is done!".to_string())
             .build()
             .unwrap();
 

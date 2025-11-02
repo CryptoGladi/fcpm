@@ -68,7 +68,7 @@ mod tests {
         let json_str = serde_json::to_string(&json).unwrap();
 
         let test_server = HttpServerBuilder::default()
-            .root_text(&json_str)
+            .root_text(json_str)
             .build()
             .unwrap();
 
@@ -86,7 +86,7 @@ mod tests {
         let json_str = serde_json::to_string(&json).unwrap();
 
         let test_server = HttpServerBuilder::default()
-            .root_text(&json_str)
+            .root_text(json_str)
             .build()
             .unwrap();
 
