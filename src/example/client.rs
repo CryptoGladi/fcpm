@@ -4,17 +4,15 @@ use crate::{Index, LockFile, OpenOptions, PackageManagerCore, example::package::
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
-pub struct PackageManagerOpenTest {
+pub struct PackageManagerCoreTest {
     lockfile: LockFile,
     index: Index<PackageExample>,
     options: OpenOptions,
     path: PathBuf,
 }
 
-impl PackageManagerCore for PackageManagerOpenTest {
-    type Package = PackageExample;
-
-    fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error> {
+impl PackageManagerCoreTest {
+    pub fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error> {
         let path_buf = path.as_ref().to_path_buf();
 
         if !options.create_if_not_exists {
@@ -34,6 +32,14 @@ impl PackageManagerCore for PackageManagerOpenTest {
             path: path_buf,
         })
     }
+
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
+        Self::open_with_options(path, OpenOptions::default())
+    }
+}
+
+impl PackageManagerCore for PackageManagerCoreTest {
+    type Package = PackageExample;
 
     fn get_lockfile(&self) -> &LockFile {
         &self.lockfile
@@ -57,10 +63,10 @@ mod tests {
     use super::*;
     use tempfile::{TempDir, tempdir};
 
-    impl PackageManagerOpenTest {
+    impl PackageManagerCoreTest {
         pub(crate) fn test_create() -> (TempDir, Self) {
             let tempdir = tempdir().unwrap();
-            let package_manager = PackageManagerOpenTest::open(&tempdir).unwrap();
+            let package_manager = PackageManagerCoreTest::open(&tempdir).unwrap();
 
             (tempdir, package_manager)
         }
@@ -70,7 +76,7 @@ mod tests {
     fn open() {
         let tempdir = tempdir().unwrap();
 
-        let _package_manager_open = PackageManagerOpenTest::open(tempdir).unwrap();
+        let _package_manager_open = PackageManagerCoreTest::open(tempdir).unwrap();
     }
 
     #[test_log::test]
@@ -83,12 +89,12 @@ mod tests {
         };
 
         let _package_manager_open =
-            PackageManagerOpenTest::open_with_options(tempdir, options).unwrap();
+            PackageManagerCoreTest::open_with_options(tempdir, options).unwrap();
     }
 
     #[test_log::test]
     fn get_lockfile() {
-        let (_tempdir, package_manager) = PackageManagerOpenTest::test_create();
+        let (_tempdir, package_manager) = PackageManagerCoreTest::test_create();
 
         let lockfile = package_manager.get_lockfile();
         assert_eq!(*lockfile, package_manager.lockfile);
@@ -96,7 +102,7 @@ mod tests {
 
     #[test_log::test]
     fn get_index() {
-        let (_tempdir, package_manager) = PackageManagerOpenTest::test_create();
+        let (_tempdir, package_manager) = PackageManagerCoreTest::test_create();
 
         let index = package_manager.get_index();
         assert_eq!(*index, package_manager.index);
@@ -104,7 +110,7 @@ mod tests {
 
     #[test_log::test]
     fn get_options() {
-        let (_tempdir, package_manager) = PackageManagerOpenTest::test_create();
+        let (_tempdir, package_manager) = PackageManagerCoreTest::test_create();
 
         let options = package_manager.get_options().into_owned();
         assert_eq!(options, package_manager.options);
@@ -112,7 +118,7 @@ mod tests {
 
     #[test_log::test]
     fn get_path() {
-        let (tempdir, package_manager) = PackageManagerOpenTest::test_create();
+        let (tempdir, package_manager) = PackageManagerCoreTest::test_create();
 
         assert_eq!(package_manager.path(), tempdir.path());
     }

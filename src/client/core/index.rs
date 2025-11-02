@@ -1,5 +1,6 @@
 use crate::package::Package;
 use rusqlite::Connection;
+use semver::Version;
 use std::{
     marker::PhantomData,
     path::{Path, PathBuf},
@@ -67,6 +68,9 @@ pub enum IndexError {
     /// The specified package was not found.
     #[error("Package `{0}` not found")]
     PackageNotFound(String),
+
+    #[error("Semver parse error: `{0}`")]
+    Ve(#[from] semver::Error),
 }
 
 impl<P> Index<P>
@@ -128,7 +132,6 @@ where
                     `name` varchar(255) not null unique CHECK(`name` != ""),
                     `version` varchar(255) not null CHECK(`version` != ""),
                     `repository_name` varchar(255) not null CHECK(`repository_name` != ""),
-                    `hashsum` varchar(256) not null CHECK(`hashsum` != ""),
                     `metadata` text null
                 )"#,
             (),
@@ -180,13 +183,12 @@ where
         let metadata = serde_json::to_string(&package.metadata())?;
 
         self.db.execute(
-            "insert into `packages` (`name`, `version`, `repository_name`, `hashsum`, `metadata`)
-                              values (?1, ?2, ?3, ?4, ?5)",
+            "insert into `packages` (`name`, `version`, `repository_name`, `metadata`)
+                              values (?1, ?2, ?3, ?4)",
             (
                 package.name(),
-                package.version(),
+                package.version().to_string(),
                 package.repository_name(),
-                package.hashsum(),
                 metadata,
             ),
         )?;
@@ -271,27 +273,21 @@ where
         #[cfg(feature = "logging")]
         log::debug!("Get package by name: {package_name}");
 
-        let (version, repository_name, hashsum, metadata_str) = self.db.query_one(
-            "select `version`, `repository_name`, `hashsum`, `metadata` from `packages` where name = ?1",
+        let (version, repository_name, metadata_str) = self.db.query_one(
+            "select `version`, `repository_name`, `metadata` from `packages` where name = ?1",
             ((package_name),),
             |row| {
-                let version = row.get(0)?;
-                let repository_name = row.get(1)?;
-                let hashsum = row.get(2)?;
-                let metadata: String = row.get(3)?;
+                let version: String = row.get(0)?;
+                let repository_name: String = row.get(1)?;
+                let metadata: String = row.get(2)?;
 
-                Ok((version, repository_name, hashsum, metadata))
+                Ok((version, repository_name, metadata))
             },
         )?;
 
+        let version = Version::parse(&version)?;
         let metadata = serde_json::from_str(&metadata_str)?;
-        let package = P::new(
-            package_name.to_string(),
-            version,
-            repository_name,
-            hashsum,
-            metadata,
-        );
+        let package = P::new(package_name.to_string(), version, repository_name, metadata);
 
         Ok(package)
     }
@@ -323,26 +319,27 @@ where
         #[cfg(feature = "logging")]
         log::debug!("Get all packages");
 
-        let mut stmt = self.db.prepare(
-            "select `name`, `version`, `repository_name`, `hashsum`, `metadata` from `packages`",
-        )?;
+        let mut stmt = self
+            .db
+            .prepare("select `name`, `version`, `repository_name`, `metadata` from `packages`")?;
 
         let rows = stmt.query_map((), |row| {
             let name: String = row.get(0)?;
             let version: String = row.get(1)?;
             let repository_name: String = row.get(2)?;
-            let hashsum: String = row.get(3)?;
-            let metadata: String = row.get(4)?;
+            let metadata: String = row.get(3)?;
 
-            Ok((name, version, repository_name, hashsum, metadata))
+            Ok((name, version, repository_name, metadata))
         })?;
 
         let mut packages = Vec::new();
         for row in rows {
-            let (name, version, repository_name, hashsum, metadata) = row?;
-            let metadata = serde_json::from_str(&metadata)?;
+            let (name, version, repository_name, metadata) = row?;
 
-            let package = P::new(name, version, repository_name, hashsum, metadata);
+            let metadata = serde_json::from_str(&metadata)?;
+            let version = Version::parse(&version)?;
+            let package = P::new(name, version, repository_name, metadata);
+
             packages.push(package);
         }
 
@@ -490,33 +487,11 @@ mod tests {
 
     #[test_log::test]
     #[should_panic]
-    fn add_package_without_version() {
-        let (_tempdir, mut index) = create_test_index();
-
-        let mut package_test = PackageExample::default();
-        package_test.version = "".to_string();
-
-        index.add_package(&package_test).unwrap();
-    }
-
-    #[test_log::test]
-    #[should_panic]
     fn add_package_without_repository_name() {
         let (_tempdir, mut index) = create_test_index();
 
         let mut package_test = PackageExample::default();
         package_test.repository_name = "".to_string();
-
-        index.add_package(&package_test).unwrap();
-    }
-
-    #[test_log::test]
-    #[should_panic]
-    fn add_package_without_hashsum() {
-        let (_tempdir, mut index) = create_test_index();
-
-        let mut package_test = PackageExample::default();
-        package_test.hashsum = "".to_string();
 
         index.add_package(&package_test).unwrap();
     }

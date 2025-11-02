@@ -1,8 +1,8 @@
-pub mod repository_manifest;
+//pub mod repository_manifest;
 
 use crate::client::core::PackageManagerCore;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, path::PathBuf};
+use std::borrow::Cow;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -56,11 +56,6 @@ impl std::ops::Index<&str> for Repositories {
     fn index(&self, index: &str) -> &Self::Output {
         self.get(index).expect("Repository not found by name")
     }
-}
-
-fn get_path(package_manager: &impl PackageManagerCore) -> PathBuf {
-    let options = package_manager.get_options();
-    options.path_repository(package_manager.path())
 }
 
 pub trait PackageManagerRepository: PackageManagerCore

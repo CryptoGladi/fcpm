@@ -1,22 +1,21 @@
 use crate::Package;
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct PackageExample {
     pub name: String,
-    pub version: String,
+    pub version: Version,
     pub repository_name: String,
-    pub hashsum: String,
 }
 
 impl Default for PackageExample {
     fn default() -> Self {
         Self {
             name: "test".to_string(),
-            version: "0.1.0".to_string(),
+            version: Version::new(0, 1, 0),
             repository_name: "nixpkgs".to_string(),
-            hashsum: "test-sha256".to_string(),
         }
     }
 }
@@ -26,16 +25,14 @@ impl Package for PackageExample {
 
     fn new(
         name: String,
-        version: String,
+        version: Version,
         repository_name: String,
-        hashsum: String,
-        _metadata: (),
+        _metadata: Self::Metadata,
     ) -> Self {
         Self {
             name,
             version,
             repository_name,
-            hashsum,
         }
     }
 
@@ -43,7 +40,7 @@ impl Package for PackageExample {
         Cow::Borrowed(&self.name)
     }
 
-    fn version(&self) -> Cow<'_, str> {
+    fn version(&self) -> Cow<'_, Version> {
         Cow::Borrowed(&self.version)
     }
 
@@ -51,28 +48,23 @@ impl Package for PackageExample {
         Cow::Borrowed(&self.repository_name)
     }
 
-    fn hashsum(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.hashsum)
-    }
-
     fn metadata(&self) -> Cow<'_, ()> {
         Cow::Owned(())
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct MetadataExample {
     pub created: String,
     pub author: String,
     pub stars: u32,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct PackageExampleWithMetadata {
     pub name: String,
-    pub version: String,
+    pub version: Version,
     pub repository_name: String,
-    pub hashsum: String,
     pub metadata: MetadataExample,
 }
 
@@ -80,9 +72,8 @@ impl Default for PackageExampleWithMetadata {
     fn default() -> Self {
         Self {
             name: "test-with-metadata".to_string(),
-            version: "0.1.0".to_string(),
+            version: Version::new(1, 0, 0),
             repository_name: "nixpkgs".to_string(),
-            hashsum: "test-sha256".to_string(),
             metadata: MetadataExample {
                 created: "12-09-2025".to_string(),
                 author: "CryptoGladi".to_string(),
@@ -97,16 +88,14 @@ impl Package for PackageExampleWithMetadata {
 
     fn new(
         name: String,
-        version: String,
+        version: Version,
         repository_name: String,
-        hashsum: String,
-        metadata: MetadataExample,
+        metadata: Self::Metadata,
     ) -> Self {
         Self {
             name,
             version,
             repository_name,
-            hashsum,
             metadata,
         }
     }
@@ -115,16 +104,12 @@ impl Package for PackageExampleWithMetadata {
         Cow::Borrowed(&self.name)
     }
 
-    fn version(&self) -> Cow<'_, str> {
+    fn version(&self) -> Cow<'_, Version> {
         Cow::Borrowed(&self.version)
     }
 
     fn repository_name(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.repository_name)
-    }
-
-    fn hashsum(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.hashsum)
     }
 
     fn metadata(&self) -> Cow<'_, MetadataExample> {

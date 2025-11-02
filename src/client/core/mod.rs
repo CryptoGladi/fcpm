@@ -4,7 +4,6 @@ pub mod index;
 pub mod lockfile;
 pub mod options;
 
-use crate::error::Error;
 use index::Index;
 use lockfile::LockFile;
 use options::OpenOptions;
@@ -68,8 +67,8 @@ pub fn check_exists_files(path: impl AsRef<Path>, options: &OpenOptions) -> Resu
 ///
 /// ```no_run
 /// use std::path::Path;
-/// use crate::fcpm::PackageManagerOpen;
-/// # use fcpm::example::client::PackageManagerOpenTest as PackageManager;
+/// use crate::fcpm::PackageManagerCore;
+/// # use fcpm::example::client::PackageManagerCoreTest as PackageManager;
 ///
 /// let pm = PackageManager::open("/path/to/pm")?;
 /// let index = pm.get_index();
@@ -80,30 +79,6 @@ where
     Self: Sized,
 {
     type Package: crate::package::Package;
-
-    /// Opens a package manager at the specified path with default options.
-    ///
-    /// # Parameters
-    /// * `path` - The path to the package manager directory.
-    ///
-    /// # Returns
-    /// Returns a `Result` containing the opened package manager or an [`enum@Error`].
-    fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
-        #[cfg(feature = "logging")]
-        log::debug!("Open package manager in path: {}", path.as_ref().display());
-
-        Self::open_with_options(path, OpenOptions::default())
-    }
-
-    /// Opens a package manager at the specified path with custom options.
-    ///
-    /// # Parameters
-    /// * `path` - The path to the package manager directory.
-    /// * `options` - Configuration options for opening the package manager.
-    ///
-    /// # Returns
-    /// Returns a `Result` containing the opened package manager or an [`enum@Error`].
-    fn open_with_options(path: impl AsRef<Path>, options: OpenOptions) -> Result<Self, Error>;
 
     /// Returns a reference to the lockfile.
     /// The lockfile prevents concurrent access to the package manager.

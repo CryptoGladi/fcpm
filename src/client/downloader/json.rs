@@ -58,13 +58,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::example::package::PackageExampleWithMetadata;
+    use crate::example::package::MetadataExample;
     use fcpm_test::http_server::HttpServerBuilder;
 
     #[test_log::test]
     #[cfg(feature = "http")]
     fn download_http() {
-        let json = vec![PackageExampleWithMetadata::default()];
+        let json = vec![MetadataExample::default()];
         let json_str = serde_json::to_string(&json).unwrap();
 
         let test_server = HttpServerBuilder::default()
@@ -74,8 +74,7 @@ mod tests {
 
         let addr = test_server.addr();
         let downloader = DownloaderJson::new(&addr);
-
-        let gotten_json: Vec<PackageExampleWithMetadata> = downloader.download().unwrap();
+        let gotten_json: Vec<MetadataExample> = downloader.download().unwrap();
 
         assert_eq!(gotten_json, json);
     }
