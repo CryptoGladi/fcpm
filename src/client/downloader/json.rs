@@ -1,4 +1,5 @@
-use super::{Downloader, DownloaderError, DownloaderType};
+use super::{Downloader, DownloaderError};
+use crate::client::downloader::reader::DownloaderReader;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::marker::PhantomData;
 
@@ -38,18 +39,10 @@ where
         #[cfg(feature = "logging")]
         log::debug!("Downloading json from: {}...", self.url());
 
-        let strategy = self.url_type()?;
+        let mut response = DownloaderReader::new(self.url).download()?;
 
-        let json = match strategy {
-            #[cfg(feature = "http")]
-            DownloaderType::Http => {
-                use reqwest::blocking::ClientBuilder;
-
-                let timeout = self.timeout();
-                let client = ClientBuilder::default().timeout(timeout).build()?;
-                client.get(self.url).send()?.text()?
-            }
-        };
+        let mut json = String::new();
+        response.read_to_string(&mut json)?;
 
         Ok(serde_json::from_str(&json)?)
     }

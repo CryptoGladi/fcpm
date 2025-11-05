@@ -1,6 +1,6 @@
 //pub mod repository_manifest;
 
-use crate::client::core::PackageManagerCore;
+use crate::client::{core::PackageManagerCore, downloader::DownloaderType};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use thiserror::Error;
@@ -15,12 +15,33 @@ pub enum RepositoryError {
 
     #[error("Json error")]
     Json(#[from] serde_json::Error),
+
+    #[error("Not found protocol for `{0}`")]
+    NotFoundProtocol(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Repository {
     name: String,
     url: String,
+}
+
+impl Repository {
+    pub fn new(name: String, url: String) -> Result<Self, RepositoryError> {
+        if !DownloaderType::is_valid(&url) {
+            return Err(RepositoryError::NotFoundProtocol(url));
+        }
+
+        Ok(Self { name, url })
+    }
+    /*
+    pub fn download(&self) -> Result<BufReader<u8>, RepositoryError> {
+        let bytes = reqwest::get(self.url);
+    }
+
+    pub fn download_to_file(&self, path: impl AsRef<Path>) -> Result<(), RepositoryError> {
+        reqwest::get(url)
+    }*/
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]

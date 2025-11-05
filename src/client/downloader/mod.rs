@@ -3,6 +3,7 @@ compile_error!("Not found method for downloading from network");
 
 pub mod file;
 pub mod json;
+pub mod reader;
 
 use std::time::Duration;
 use thiserror::Error;
@@ -43,6 +44,10 @@ impl DownloaderType {
             Some("http" | "https") => Some(Self::Http),
             _ => None,
         }
+    }
+
+    pub(crate) fn is_valid(url: &str) -> bool {
+        Self::get(url).is_some()
     }
 }
 
@@ -95,5 +100,12 @@ mod tests {
             DownloaderType::get("http://example.com").unwrap(),
             DownloaderType::Http
         );
+    }
+
+    #[test_log::test]
+    #[cfg(feature = "http")]
+    fn is_valid() {
+        assert!(DownloaderType::is_valid("https://lsl.com"));
+        assert!(!DownloaderType::is_valid("not_https://lsl.com"));
     }
 }

@@ -1,4 +1,5 @@
-use super::{Downloader, DownloaderError, DownloaderType};
+use super::{Downloader, DownloaderError};
+use crate::client::downloader::reader::DownloaderReader;
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 
@@ -31,25 +32,13 @@ impl<'a> Downloader<'a> for DownloaderFile<'a> {
             self.path.display()
         );
 
-        let strategy = self.url_type()?;
+        let mut file = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&self.path)?;
 
-        match strategy {
-            #[cfg(feature = "http")]
-            DownloaderType::Http => {
-                use reqwest::blocking::ClientBuilder;
-
-                let timeout = self.timeout();
-                let client = ClientBuilder::default().timeout(timeout).build()?;
-                let mut response = client.get(self.url).send()?;
-
-                let mut file = OpenOptions::new()
-                    .create_new(true)
-                    .write(true)
-                    .open(&self.path)?;
-
-                std::io::copy(&mut response, &mut file)?;
-            }
-        }
+        let mut response = DownloaderReader::new(self.url).download()?;
+        std::io::copy(&mut response, &mut file)?;
 
         Ok(())
     }
