@@ -224,7 +224,9 @@ where
     /// #
     /// # Ok::<(), fcpm::client::core::index::IndexError>(())
     /// ```
-    pub fn delete_package(&mut self, package_name: &str) -> Result<(), IndexError> {
+    pub fn delete_package(&mut self, package_name: impl AsRef<str>) -> Result<(), IndexError> {
+        let package_name = package_name.as_ref();
+
         #[cfg(feature = "logging")]
         log::debug!("Delete package by name: `{package_name}`");
 
@@ -269,7 +271,9 @@ where
     /// assert_eq!(package.name(), "package-name");
     /// # Ok::<(), fcpm::client::core::index::IndexError>(())
     /// ```
-    pub fn get_package(&self, package_name: &str) -> Result<P, IndexError> {
+    pub fn get_package(&self, package_name: impl AsRef<str>) -> Result<P, IndexError> {
+        let package_name = package_name.as_ref();
+
         #[cfg(feature = "logging")]
         log::debug!("Get package by name: {package_name}");
 
@@ -374,7 +378,9 @@ where
     /// assert!(exists);
     /// # Ok::<(), fcpm::client::core::index::IndexError>(())
     /// ```
-    pub fn have_package(&self, package_name: &str) -> Result<bool, IndexError> {
+    pub fn have_package(&self, package_name: impl AsRef<str>) -> Result<bool, IndexError> {
+        let package_name = package_name.as_ref();
+
         #[cfg(feature = "logging")]
         log::debug!("Have package: {package_name}?");
 

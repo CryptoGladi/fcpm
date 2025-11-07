@@ -19,7 +19,7 @@ impl<'a> Downloader<'a> for DownloaderReader<'a> {
         self.url
     }
 
-    fn download(&self) -> Result<Self::Object, DownloaderError> {
+    fn download(&self) -> Result<Box<dyn Read>, DownloaderError> {
         #[cfg(feature = "logging")]
         log::debug!("Downloading reader from: `{}`...", self.url(),);
 

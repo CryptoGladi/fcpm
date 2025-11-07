@@ -34,16 +34,7 @@ impl Repository {
 
         Ok(Self { name, url })
     }
-    /*
-    pub fn download(&self) -> Result<BufReader<u8>, RepositoryError> {
-        let bytes = reqwest::get(self.url);
-    }
-
-    pub fn download_to_file(&self, path: impl AsRef<Path>) -> Result<(), RepositoryError> {
-        reqwest::get(url)
-    }*/
 }
-
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Repositories(Vec<Repository>);
 

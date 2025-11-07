@@ -1,6 +1,7 @@
 pub mod core;
 pub mod downloader;
 pub mod repository;
+pub mod store;
 
 use crate::client::core::PackageManagerCore;
 use crate::client::repository::PackageManagerRepository;
